@@ -21,6 +21,11 @@ const SUPPORTED_DESTINATIONS = [
 ];
 
 export default function Home() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const { address, isConnected, chainId } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
@@ -144,7 +149,7 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            {isConnected ? (
+            {!mounted ? null : isConnected ? (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -164,12 +169,25 @@ export default function Home() {
                 </button>
               </motion.div>
             ) : (
-              <button 
-                onClick={() => connect({ connector: connectors[0] })}
-                className="bg-white text-black hover:bg-emerald-400 transition-colors rounded-full px-6 py-2.5 text-sm font-bold tracking-tight shadow-lg"
-              >
-                Connect Wallet
-              </button>
+              <div className="flex gap-2">
+                {connectors.map((connector) => (
+                  <button 
+                    key={connector.uid}
+                    onClick={() => connect({ connector })}
+                    className="bg-white text-black hover:bg-emerald-400 transition-colors rounded-full px-6 py-2.5 text-sm font-bold tracking-tight shadow-lg"
+                  >
+                    Connect {connector.name}
+                  </button>
+                ))}
+                {connectors.length === 0 && (
+                  <button 
+                    onClick={() => alert("No wallet installed or detected!")}
+                    className="bg-white text-black hover:bg-emerald-400 transition-colors rounded-full px-6 py-2.5 text-sm font-bold tracking-tight shadow-lg"
+                  >
+                    Connect Wallet
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </motion.header>
@@ -289,13 +307,33 @@ export default function Home() {
 
             {/* Action Button */}
             <div className="mt-6">
-              {!isConnected ? (
+              {!mounted ? (
                 <button 
-                  onClick={() => connect({ connector: connectors[0] })}
-                  className="w-full py-4 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold tracking-tight transition-colors"
+                  disabled
+                  className="w-full py-4 bg-white/5 text-white/50 rounded-xl font-bold tracking-tight"
                 >
-                  Connect to Swap
+                  Loading...
                 </button>
+              ) : !isConnected ? (
+                <div className="flex flex-col gap-2">
+                  {connectors.map((connector) => (
+                    <button 
+                      key={connector.uid}
+                      onClick={() => connect({ connector })}
+                      className="w-full py-4 bg-white/10 hover:bg-emerald-400 text-white hover:text-black rounded-xl font-bold tracking-tight transition-colors"
+                    >
+                      Connect {connector.name} to Swap
+                    </button>
+                  ))}
+                  {connectors.length === 0 && (
+                    <button 
+                      onClick={() => alert("No wallet installed or detected!")}
+                      className="w-full py-4 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold tracking-tight transition-colors"
+                    >
+                      Connect to Swap (No Wallet Detected)
+                    </button>
+                  )}
+                </div>
               ) : !quote ? (
                 <button
                   onClick={handleGetQuote}

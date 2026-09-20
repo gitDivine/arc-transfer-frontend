@@ -201,6 +201,15 @@ export default function Home() {
 
   const handleExecute = async () => {
     if (!quote || !quote.legs || !address) return;
+    
+    // Prevent race conditions where the user clicks Execute while a new quote is fetching
+    const expectedHubChainId = HUB_CHAINS[hubIndex].chainId;
+    const expectedDestChainId = SUPPORTED_DESTINATIONS[destIndex].id;
+    if (quote.legs[1]?.sourceChainId !== expectedHubChainId || quote.legs[1]?.destinationChainId !== expectedDestChainId) {
+      alert("The bridge route is currently recalculating for your selected networks. Please wait a few seconds for it to finish loading, then try again.");
+      return;
+    }
+
     setTxHashes([]);
     try {
       const cctpLeg = quote.legs[0];

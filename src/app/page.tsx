@@ -141,7 +141,7 @@ export default function Home() {
         address: arcUSDC,
         abi: erc20Abi,
         functionName: 'approve',
-        args: [cctpLeg.instructions.contractAddress as `0x${string}`, parseUnits(amount, 6)]
+        args: [cctpLeg.instructions.contractAddress as `0x${string}`, parseUnits(amount, 18)]
       });
       setTxHashes(prev => [...prev, cctpApproveTx]);
       
@@ -166,7 +166,7 @@ export default function Home() {
         }],
         functionName: 'depositForBurn',
         args: [
-          parseUnits(amount, 6),
+          parseUnits(amount, 18),
           6, // Base CCTP Domain
           mintRecipient as `0x${string}`, 
           arcUSDC as `0x${string}` // The actual USDC token to burn

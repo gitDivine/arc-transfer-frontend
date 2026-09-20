@@ -23,6 +23,13 @@ export const networks: Record<string, NetworkConfig> = {
 
 export const HUB_CHAINS = [
   {
+    name: 'Ethereum',
+    chainId: 1,
+    domain: 0,
+    usdcAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' as `0x${string}`,
+    cctpMessageTransmitter: '0x81D40F212879f82dE79A1dC54921E727d4c464b6' as `0x${string}`,
+  },
+  {
     name: 'Base',
     chainId: 8453,
     domain: 6,

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { base, bsc, arbitrum, optimism, polygon, mainnet } from 'wagmi/chains';
+import { injected } from 'wagmi/connectors';
 
 const arcMainnet = {
   id: 5042,
@@ -16,6 +17,7 @@ const arcMainnet = {
 
 const config = createConfig({
   chains: [arcMainnet, base, bsc, arbitrum, optimism, polygon, mainnet],
+  connectors: [injected()],
   transports: {
     [arcMainnet.id]: http(),
     [base.id]: http(),

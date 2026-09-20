@@ -244,7 +244,7 @@ export default function Home() {
         functionName: 'depositForBurn',
         args: [
           parseUnits(amount, 6),
-          6, // Base CCTP Domain
+          cctpLeg.instructions.destinationDomain || 6, // Base CCTP Domain fallback
           mintRecipient as `0x${string}`, 
           arcUSDC as `0x${string}`, // The actual USDC token to burn
           '0x0000000000000000000000000000000000000000000000000000000000000000', // destinationCaller
@@ -267,7 +267,7 @@ export default function Home() {
             const data = await res.json();
             if (data.messages && data.messages.length > 0) {
               const msg = data.messages[0];
-              if (msg.status === 'complete' || msg.attestation) {
+              if (msg.status === 'complete' && msg.attestation && msg.message) {
                 attestation = msg.attestation;
                 messageBytes = msg.message; // v2 endpoint returns the message bytes directly!
                 break;

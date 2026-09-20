@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
       instructions: {
         contractAddress: networks.arcMainnet.cctpTokenMessenger,
         functionName: 'depositForBurn',
+        destinationDomain: hubChainId === 42161 ? 3 : 6
       }
     };
     

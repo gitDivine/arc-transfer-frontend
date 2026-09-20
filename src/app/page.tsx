@@ -85,6 +85,20 @@ export default function Home() {
   
   const [activeStep, setActiveStep] = useState<number>(0);
   const [txHashes, setTxHashes] = useState<string[]>([]);
+
+  // Auto-select optimal hub when destination changes
+  useEffect(() => {
+    const dest = SUPPORTED_DESTINATIONS[destIndex];
+    const matchedHubIndex = HUB_CHAINS.findIndex(h => h.chainId === dest.id);
+    if (matchedHubIndex !== -1) {
+      setHubIndex(matchedHubIndex);
+    } else {
+      // Default to Arbitrum or Base for cheapest fees to non-hub chains like BNB/Robinhood
+      const arbIndex = HUB_CHAINS.findIndex(h => h.name === 'Arbitrum');
+      setHubIndex(arbIndex !== -1 ? arbIndex : 0);
+    }
+  }, [destIndex]);
+
   
   const { writeContractAsync } = useWriteContract();
   const { sendTransactionAsync } = useSendTransaction();
@@ -121,7 +135,10 @@ export default function Home() {
           amount,
           userAddress: address,
           destinationChainId: dest.id,
-          destinationTokenAddress: dest.tokens[destTokenIndex].address
+          destinationTokenAddress: dest.tokens[destTokenIndex].address,
+          hubChainId: HUB_CHAINS[hubIndex].chainId,
+          hubTokenAddress: HUB_CHAINS[hubIndex].usdcAddress,
+          hubChainName: HUB_CHAINS[hubIndex].name
         })
       });
       const data = await res.json();

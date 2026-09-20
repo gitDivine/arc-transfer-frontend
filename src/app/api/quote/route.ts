@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
         expectedOutputAmount: lifiQuote.estimate.toAmount,
         transactionRequest: lifiQuote.transactionRequest
       };
-    } catch (e: any) {
+    } catch (e) {
       console.error('LI.FI Quote Error:', e.message);
       lifiLeg = {
         type: 'aggregator',
@@ -76,8 +76,8 @@ export async function POST(req: NextRequest) {
       }
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Quote Route Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }

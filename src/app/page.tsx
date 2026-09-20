@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAccount, useConnect, useDisconnect, useWriteContract, useSendTransaction, useSwitchChain } from 'wagmi';
-import { ArrowRight, Loader2, CheckCircle2, Zap, ArrowDown, Activity } from 'lucide-react';
+import { Loader2, CheckCircle2, Zap, ArrowDown, Activity } from 'lucide-react';
 import { parseUnits } from 'viem';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
@@ -19,7 +19,7 @@ export default function Home() {
   const { switchChainAsync } = useSwitchChain();
   
   const [amount, setAmount] = useState('1.5');
-  const [quote, setQuote] = useState<any>(null);
+  const [quote, setQuote] = useState<unknown>(null);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   
   const [activeStep, setActiveStep] = useState<number>(0);

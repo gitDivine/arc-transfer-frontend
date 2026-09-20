@@ -1,3 +1,4 @@
+import { HUB_CHAINS } from '@/config/networks';
 'use client';
 
 import { useState, useEffect } from 'react';

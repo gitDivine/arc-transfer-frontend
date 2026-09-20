@@ -205,9 +205,19 @@ export default function Home() {
     // Prevent race conditions where the user clicks Execute while a new quote is fetching
     const expectedHubChainId = HUB_CHAINS[hubIndex].chainId;
     const expectedDestChainId = SUPPORTED_DESTINATIONS[destIndex].id;
-    if (quote.legs[1]?.sourceChainId !== expectedHubChainId || quote.legs[1]?.destinationChainId !== expectedDestChainId) {
-      alert("The bridge route is currently recalculating for your selected networks. Please wait a few seconds for it to finish loading, then try again.");
-      return;
+    const isSameChain = expectedHubChainId === expectedDestChainId;
+    const isSameToken = HUB_CHAINS[hubIndex].usdcAddress.toLowerCase() === SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].address.toLowerCase();
+    
+    if (isSameChain && isSameToken) {
+      if (quote.legs.length !== 1) {
+        alert("The bridge route is currently recalculating for your selected networks. Please wait a few seconds.");
+        return;
+      }
+    } else {
+      if (quote.legs[1]?.sourceChainId !== expectedHubChainId || quote.legs[1]?.destinationChainId !== expectedDestChainId) {
+        alert("The bridge route is currently recalculating for your selected networks. Please wait a few seconds.");
+        return;
+      }
     }
 
     setTxHashes([]);
@@ -289,13 +299,13 @@ export default function Home() {
       }
       
       setActiveStep(3.5); // Switch & Claim on Hub
-      const lifiLeg = quote.legs[1];
-      if (getAccount(config).chainId !== lifiLeg.sourceChainId) {
-        await switchChainAsync({ chainId: lifiLeg.sourceChainId });
+      const hubChainId = HUB_CHAINS[hubIndex].chainId;
+      if (getAccount(config).chainId !== hubChainId) {
+        await switchChainAsync({ chainId: hubChainId });
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
       
-      // 3. Claim USDC on Base
+      // 3. Claim USDC on Hub
       const baseMessageTransmitter = HUB_CHAINS[hubIndex].cctpMessageTransmitter;
       const receiveTx = await writeContractAsync({
         address: baseMessageTransmitter,
@@ -311,14 +321,19 @@ export default function Home() {
         }],
         functionName: 'receiveMessage',
         args: [messageBytes, attestation],
-        chainId: HUB_CHAINS[hubIndex].chainId
+        chainId: hubChainId
       });
       
       setTxHashes(prev => [...prev, receiveTx]);
       
       // Wait for receiveMessage to mine
-      // Since we switched networks, publicClient might still point to Arc, so we use a small delay instead of waitForTransactionReceipt to be safe
       await waitForTransactionReceipt(config, { hash: receiveTx });
+      
+      // If there is no LI.FI leg (destination is the hub itself), we are done!
+      if (quote.legs.length === 1) {
+        setActiveStep(6);
+        return;
+      }
       
       // REFETCH LI.FI QUOTE to avoid expired LayerZero fees / swap data
       const freshQuoteRes = await fetch('/api/quote', {
@@ -588,13 +603,17 @@ export default function Home() {
               </label>
               
               <div className="flex flex-col gap-2">
-                <div className="mt-1 text-4xl font-bold tracking-tighter text-emerald-400 flex items-center justify-between">
-                  <span>
-                    {quote && quote.legs && quote.legs[1] && quote.legs[1].expectedOutputAmount ? 
-                      (Number(quote.legs[1].expectedOutputAmount || 0) / Math.pow(10, quote.legs[1].toTokenDecimals || 18)).toFixed(4) 
-                      : "0.00"}
-                  </span>
-                </div>
+                  <div className="mt-1 text-4xl font-bold tracking-tighter text-emerald-400 flex items-center justify-between">
+                    <span>
+                      {quote && quote.legs && quote.legs.length > 0 ? (
+                        quote.legs.length === 1 ? 
+                          amount || "0.00" :
+                        quote.legs[1] && quote.legs[1].expectedOutputAmount ? 
+                          (Number(quote.legs[1].expectedOutputAmount || 0) / Math.pow(10, quote.legs[1].toTokenDecimals || 18)).toFixed(4) :
+                          "0.00"
+                      ) : "0.00"}
+                    </span>
+                  </div>
               </div>
             </div>
 
@@ -614,12 +633,15 @@ export default function Home() {
                         <Activity size={14} /> ~{quote.estimatedTotalTimeSeconds}s
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-white/60 font-medium">Routing</span>
-                      <span className="font-mono text-xs text-white/80 bg-white/10 px-2 py-1 rounded-md">
-                        Arc → {HUB_CHAINS[hubIndex].name} → {SUPPORTED_DESTINATIONS[destIndex].name} ({quote.legs[1]?.toTokenSymbol || SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].symbol})
-                      </span>
-                    </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-white/60 font-medium">Routing</span>
+                        <span className="font-mono text-xs text-white/80 bg-white/10 px-2 py-1 rounded-md">
+                          {quote?.legs?.length === 1 
+                            ? `Arc → ${HUB_CHAINS[hubIndex].name} (USDC)`
+                            : `Arc → ${HUB_CHAINS[hubIndex].name} → ${SUPPORTED_DESTINATIONS[destIndex].name} (${quote?.legs?.[1]?.toTokenSymbol || SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].symbol})`
+                          }
+                        </span>
+                      </div>
                   </div>
                 </motion.div>
               )}

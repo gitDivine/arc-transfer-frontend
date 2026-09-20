@@ -40,43 +40,51 @@ export async function POST(req: NextRequest) {
     
     let lifiLeg;
     try {
-      const lifiQuote = await lifiService.getQuote({
-        fromChain: hubChainId,
-        toChain: destinationChainId,
-        fromToken: hubTokenAddress,
-        toToken: destinationTokenAddress,
-        fromAmount: amountInMicro,
-        fromAddress: userAddress
-      });
+      // Only fetch LI.FI if we actually need a swap or a bridge
+      const isSameChain = hubChainId === destinationChainId;
+      const isSameToken = hubTokenAddress.toLowerCase() === destinationTokenAddress.toLowerCase();
       
-      lifiLeg = {
-        type: 'aggregator',
-        provider: 'lifi',
-        sourceChainId: hubChainId,
-        destinationChainId: destinationChainId,
-        estimatedTimeSeconds: lifiQuote.estimate.executionDuration,
-        feeCosts: lifiQuote.estimate.feeCosts,
-        gasCosts: lifiQuote.estimate.gasCosts,
-        expectedOutputAmount: lifiQuote.estimate.toAmount,
-        toTokenDecimals: lifiQuote.action.toToken.decimals,
-        toTokenSymbol: lifiQuote.action.toToken.symbol,
-        transactionRequest: lifiQuote.transactionRequest
-      };
-    } catch (e) {
-      console.error('LI.FI Quote Error:', e instanceof Error ? e.message : 'Unknown error');
-      lifiLeg = {
-        type: 'aggregator',
-        provider: 'lifi',
-        error: 'Failed to fetch aggregator route for Leg 2: ' + e.message
-      };
+      if (!isSameChain || !isSameToken) {
+        const lifiQuote = await lifiService.getQuote({
+          fromChain: hubChainId,
+          toChain: destinationChainId,
+          fromToken: hubTokenAddress,
+          toToken: destinationTokenAddress,
+          fromAmount: amountInMicro,
+          fromAddress: userAddress
+        });
+        
+        lifiLeg = {
+          type: 'aggregator',
+          provider: 'lifi',
+          sourceChainId: hubChainId,
+          destinationChainId: destinationChainId,
+          estimatedTimeSeconds: lifiQuote.estimate.executionDuration,
+          feeCosts: lifiQuote.estimate.feeCosts,
+          gasCosts: lifiQuote.estimate.gasCosts,
+          expectedOutputAmount: lifiQuote.estimate.toAmount,
+          toTokenDecimals: lifiQuote.action.toToken.decimals,
+          toTokenSymbol: lifiQuote.action.toToken.symbol,
+          transactionRequest: lifiQuote.transactionRequest
+        };
+      }
+    } catch (err: any) {
+      return NextResponse.json({ 
+        success: false, 
+        route: { legs: [cctpLeg] },
+        error: err.message || 'Failed to get LI.FI quote'
+      });
     }
+    
+    const legs = [cctpLeg];
+    if (lifiLeg) legs.push(lifiLeg);
 
     return NextResponse.json({
       success: true,
       route: {
         totalAmountIn: amountInMicro,
-        estimatedTotalTimeSeconds: cctpLeg.estimatedTimeSeconds + (lifiLeg.estimatedTimeSeconds || 0),
-        legs: [cctpLeg, lifiLeg]
+        estimatedTotalTimeSeconds: cctpLeg.estimatedTimeSeconds + (lifiLeg?.estimatedTimeSeconds || 0),
+        legs
       }
     });
 

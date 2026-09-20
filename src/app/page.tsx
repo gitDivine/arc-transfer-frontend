@@ -279,7 +279,7 @@ export default function Home() {
         }],
         functionName: 'receiveMessage',
         args: [messageBytes, attestation],
-        chainId: 8453
+        chainId: HUB_CHAINS[hubIndex].chainId
       });
       
       setTxHashes(prev => [...prev, receiveTx]);
@@ -289,7 +289,7 @@ export default function Home() {
       await new Promise(resolve => setTimeout(resolve, 8000));
       
       setActiveStep(4); // Ready to approve LI.FI
-      const baseMainnetUSDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+      const baseMainnetUSDC = HUB_CHAINS[hubIndex].usdcAddress;
       
       // Approve LI.FI to spend USDC
       const approveTx = await writeContractAsync({
@@ -297,7 +297,7 @@ export default function Home() {
         abi: erc20Abi,
         functionName: 'approve',
         args: [lifiLeg.transactionRequest.to as `0x${string}`, parseUnits(amount, 6)],
-        chainId: 8453
+        chainId: HUB_CHAINS[hubIndex].chainId
       });
       
       setTxHashes(prev => [...prev, approveTx]);
@@ -310,7 +310,7 @@ export default function Home() {
         to: lifiLeg.transactionRequest.to as `0x${string}`,
         data: lifiLeg.transactionRequest.data as `0x${string}`,
         value: BigInt(lifiLeg.transactionRequest.value || 0),
-        chainId: 8453
+        chainId: HUB_CHAINS[hubIndex].chainId
       });
       
       setTxHashes(prev => [...prev, lifiTx]);

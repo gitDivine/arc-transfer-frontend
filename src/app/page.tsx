@@ -79,7 +79,6 @@ export default function Home() {
   
   const { writeContractAsync } = useWriteContract();
   const { sendTransactionAsync } = useSendTransaction();
-  const { switchChainAsync } = useSwitchChain();
   const publicClient = usePublicClient();
 
   const { data: usdcBalance } = useReadContract({

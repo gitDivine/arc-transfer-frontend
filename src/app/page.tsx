@@ -549,7 +549,7 @@ export default function Home() {
                   {activeStep === 0 ? "Confirm Bridge" : 
                    activeStep === 1 ? "Approve CCTP..." :
                    activeStep === 2 ? "Sign CCTP Burn..." : 
-                   activeStep === 3 ? "Waiting for Circle Attestation (~12m)..." : 
+                   activeStep === 3 ? "Waiting for Circle Attestation..." : 
                    activeStep === 3.5 ? "Claim USDC on Base..." : 
                    activeStep === 4 ? "Approve LI.FI Bridge..." : 
                    activeStep === 5 ? "Sign LI.FI Bridge..." : "Transfer Complete"}

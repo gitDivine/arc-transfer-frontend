@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useConnect, useDisconnect, useWriteContract, useSendTransaction, useSwitchChain, useReadContract } from 'wagmi';
+import { useAccount, useConnect, useDisconnect, useWriteContract, useSendTransaction, useSwitchChain, useReadContract, usePublicClient } from 'wagmi';
 import { Loader2, CheckCircle2, Zap, ArrowDown, Activity } from 'lucide-react';
-import { parseUnits, erc20Abi } from 'viem';
+import { parseUnits, erc20Abi, decodeEventLog, keccak256 } from 'viem';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -79,6 +79,8 @@ export default function Home() {
   
   const { writeContractAsync } = useWriteContract();
   const { sendTransactionAsync } = useSendTransaction();
+  const { switchChainAsync } = useSwitchChain();
+  const publicClient = usePublicClient();
 
   const { data: usdcBalance } = useReadContract({
     address: '0x3600000000000000000000000000000000000000', // Arc Mainnet USDC
@@ -180,52 +182,73 @@ export default function Home() {
       });
       
       setTxHashes(prev => [...prev, burnTx]);
-      setActiveStep(3); // Waiting for relayer
+      setActiveStep(3); // Waiting for Circle Attestation
       
-      const lifiLeg = quote.legs[1];
-      if (chainId !== lifiLeg.sourceChainId) {
-        await switchChainAsync({ chainId: lifiLeg.sourceChainId });
-      }
+      if (!publicClient) throw new Error("Public client not found");
       
-      const baseMainnetUSDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+      // 1. Get transaction receipt to extract MessageBytes
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: burnTx });
+      const messageSentTopic = '0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036';
+      const log = receipt.logs.find(l => l.topics[0] === messageSentTopic);
+      if (!log) throw new Error("MessageSent log not found");
       
-      // Wait for CCTP Relayer to mint USDC on Base (Poll up to 2 minutes)
-      let balanceArrived = false;
-      const expectedAmount = parseUnits(amount, 6);
-      for (let i = 0; i < 24; i++) {
+      const decodedLog = decodeEventLog({
+        abi: [{ type: 'event', name: 'MessageSent', inputs: [{ indexed: false, name: 'message', type: 'bytes' }] }],
+        data: log.data,
+        topics: log.topics,
+      });
+      const messageBytes = decodedLog.args.message;
+      const messageHash = keccak256(messageBytes as `0x${string}`);
+      
+      // 2. Poll Circle IRIS API for Attestation
+      let attestation = '';
+      while (true) {
         try {
-          const res = await fetch('https://mainnet.base.org', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              jsonrpc: '2.0',
-              id: 1,
-              method: 'eth_call',
-              params: [{
-                to: baseMainnetUSDC,
-                data: '0x70a08231000000000000000000000000' + address.slice(2).toLowerCase()
-              }, 'latest']
-            })
-          });
-          const data = await res.json();
-          if (data.result && data.result !== '0x') {
-            const bal = BigInt(data.result);
-            if (bal >= expectedAmount) {
-              balanceArrived = true;
+          const res = await fetch(`https://iris-api.circle.com/v1/attestations/${messageHash}`);
+          if (res.status === 200) {
+            const data = await res.json();
+            if (data.status === 'complete' || data.attestation) {
+              attestation = data.attestation;
               break;
             }
           }
-        } catch (e) {
-          console.error("Polling error", e);
-        }
+        } catch (e) {}
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
       
-      if (!balanceArrived) {
-        throw new Error("CCTP Relayer is taking longer than expected. Please manually execute the bridge from Base later.");
+      setActiveStep(3.5); // Switch & Claim on Base
+      const lifiLeg = quote.legs[1];
+      if (chainId !== lifiLeg.sourceChainId) {
+        await switchChainAsync({ chainId: lifiLeg.sourceChainId });
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
       
+      // 3. Claim USDC on Base
+      const baseMessageTransmitter = '0xAD09780d193884d503182aD4588450C416D6F9D4';
+      const receiveTx = await writeContractAsync({
+        address: baseMessageTransmitter,
+        abi: [{
+          "inputs": [
+            { "internalType": "bytes", "name": "message", "type": "bytes" },
+            { "internalType": "bytes", "name": "attestation", "type": "bytes" }
+          ],
+          "name": "receiveMessage",
+          "outputs": [{ "internalType": "bool", "name": "success", "type": "bool" }],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        }],
+        functionName: 'receiveMessage',
+        args: [messageBytes, attestation]
+      });
+      
+      setTxHashes(prev => [...prev, receiveTx]);
+      
+      // Wait for receiveMessage to mine
+      // Since we switched networks, publicClient might still point to Arc, so we use a small delay instead of waitForTransactionReceipt to be safe
+      await new Promise(resolve => setTimeout(resolve, 8000));
+      
       setActiveStep(4); // Ready to approve LI.FI
+      const baseMainnetUSDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
       
       // Approve LI.FI to spend USDC
       const approveTx = await writeContractAsync({
@@ -527,7 +550,8 @@ export default function Home() {
                   {activeStep === 0 ? "Confirm Bridge" : 
                    activeStep === 1 ? "Approve CCTP..." :
                    activeStep === 2 ? "Sign CCTP Burn..." : 
-                   activeStep === 3 ? "Waiting for CCTP Relayer..." : 
+                   activeStep === 3 ? "Waiting for Circle Attestation (~12m)..." : 
+                   activeStep === 3.5 ? "Claim USDC on Base..." : 
                    activeStep === 4 ? "Approve LI.FI Bridge..." : 
                    activeStep === 5 ? "Sign LI.FI Bridge..." : "Transfer Complete"}
                 </button>

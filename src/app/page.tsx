@@ -126,7 +126,7 @@ export default function Home() {
   };
 
   const handleExecute = async () => {
-    if (!quote || !quote.legs) return;
+    if (!quote || !quote.legs || !address) return;
     
     try {
       const cctpLeg = quote.legs[0];
@@ -135,6 +135,8 @@ export default function Home() {
       }
       
       setActiveStep(1);
+      
+      const mintRecipient = '0x000000000000000000000000' + address.slice(2).toLowerCase();
       
       const burnTx = await writeContractAsync({
         address: cctpLeg.instructions.contractAddress as `0x${string}`,
@@ -154,18 +156,72 @@ export default function Home() {
         args: [
           parseUnits(amount, 6),
           0,
-          '0x000000000000000000000000863d20694e1e74a96a149fa21befe13fbbf529c6', 
+          mintRecipient as `0x${string}`, 
           '0x0000000000000000000000000000000000000000'
         ]
       });
       
       setTxHashes(prev => [...prev, burnTx]);
-      setActiveStep(2);
+      setActiveStep(2); // Now in waiting for relayer state
       
       const lifiLeg = quote.legs[1];
       if (chainId !== lifiLeg.sourceChainId) {
         await switchChainAsync({ chainId: lifiLeg.sourceChainId });
       }
+      
+      const baseMainnetUSDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+      
+      // Wait for CCTP Relayer to mint USDC on Base (Poll up to 2 minutes)
+      let balanceArrived = false;
+      const expectedAmount = parseUnits(amount, 6);
+      for (let i = 0; i < 24; i++) {
+        try {
+          const res = await fetch('https://mainnet.base.org', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'eth_call',
+              params: [{
+                to: baseMainnetUSDC,
+                data: '0x70a08231000000000000000000000000' + address.slice(2).toLowerCase()
+              }, 'latest']
+            })
+          });
+          const data = await res.json();
+          if (data.result && data.result !== '0x') {
+            const bal = BigInt(data.result);
+            if (bal >= expectedAmount) {
+              balanceArrived = true;
+              break;
+            }
+          }
+        } catch (e) {
+          console.error("Polling error", e);
+        }
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+      
+      if (!balanceArrived) {
+        throw new Error("CCTP Relayer is taking longer than expected. Please manually execute the bridge from Base later.");
+      }
+      
+      setActiveStep(3); // Now ready to approve
+      
+      // Approve LI.FI to spend USDC
+      const approveTx = await writeContractAsync({
+        address: baseMainnetUSDC,
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [lifiLeg.transactionRequest.to as `0x${string}`, parseUnits(amount, 6)]
+      });
+      
+      setTxHashes(prev => [...prev, approveTx]);
+      setActiveStep(4);
+      
+      // Give the network a few seconds to mine the approval
+      await new Promise(resolve => setTimeout(resolve, 8000));
       
       const lifiTx = await sendTransactionAsync({
         to: lifiLeg.transactionRequest.to as `0x${string}`,
@@ -174,7 +230,7 @@ export default function Home() {
       });
       
       setTxHashes(prev => [...prev, lifiTx]);
-      setActiveStep(3); 
+      setActiveStep(5); 
       
     } catch (err) {
       console.error(err);
@@ -449,10 +505,12 @@ export default function Home() {
                     activeStep > 0 ? "bg-white/10 text-white/50" : "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                   )}
                 >
-                  {activeStep > 0 ? <Loader2 className="animate-spin text-emerald-500" size={18} /> : null}
+                  {activeStep > 0 && activeStep < 5 ? <Loader2 className="animate-spin text-emerald-500" size={18} /> : null}
                   {activeStep === 0 ? "Confirm Bridge" : 
                    activeStep === 1 ? "Sign CCTP Burn..." : 
-                   activeStep === 2 ? "Sign LI.FI Bridge..." : "Transfer Complete"}
+                   activeStep === 2 ? "Waiting for CCTP Relayer..." : 
+                   activeStep === 3 ? "Approve LI.FI Bridge..." : 
+                   activeStep === 4 ? "Sign LI.FI Bridge..." : "Transfer Complete"}
                 </button>
               )}
             </div>

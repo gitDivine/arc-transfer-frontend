@@ -28,6 +28,7 @@ export default function Home() {
   
   const [amount, setAmount] = useState('1.5');
   const [destIndex, setDestIndex] = useState(0);
+  const [destTokenAddress, setDestTokenAddress] = useState('0x0000000000000000000000000000000000000000'); // Default to native token
   const [quote, setQuote] = useState<any>(null);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   
@@ -50,7 +51,7 @@ export default function Home() {
           amount,
           userAddress: address,
           destinationChainId: dest.id,
-          destinationTokenAddress: dest.token
+          destinationTokenAddress: destTokenAddress
         })
       });
       const data = await res.json();
@@ -233,7 +234,7 @@ export default function Home() {
 
             {/* Output Section */}
             <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all focus-within:bg-white/10 focus-within:border-white/20">
-              <label className="text-xs font-semibold text-white/40 tracking-wider uppercase flex items-center justify-between">
+              <label className="text-xs font-semibold text-white/40 tracking-wider uppercase flex items-center justify-between mb-2">
                 <span>Receive on</span>
                 <select 
                   className="bg-[#0A0A0B] text-white border border-white/10 rounded-md px-2 py-1 outline-none text-xs"
@@ -245,9 +246,19 @@ export default function Home() {
                   ))}
                 </select>
               </label>
-              <div className="mt-2 text-4xl font-bold tracking-tighter text-white/60 flex items-center justify-between">
-                <span>{quote && quote.legs && quote.legs[1] && quote.legs[1].expectedOutputAmount ? (Number(quote.legs[1].expectedOutputAmount || 0) / 1e6).toFixed(4) : "0.00"}</span>
-                <span className="text-lg text-white/40">{SUPPORTED_DESTINATIONS[destIndex].symbol}</span>
+              
+              <div className="flex flex-col gap-2">
+                <input 
+                  type="text"
+                  value={destTokenAddress}
+                  onChange={e => setDestTokenAddress(e.target.value)}
+                  className="w-full bg-black/50 border border-white/10 text-white/80 rounded-lg px-3 py-2 text-sm outline-none placeholder-white/20"
+                  placeholder="Paste any token address (e.g. 0x... for native or ERC20)"
+                />
+                
+                <div className="mt-1 text-4xl font-bold tracking-tighter text-emerald-400 flex items-center justify-between">
+                  <span>{quote && quote.legs && quote.legs[1] && quote.legs[1].expectedOutputAmount ? (Number(quote.legs[1].expectedOutputAmount || 0) / 1e6).toFixed(4) : "0.00"}</span>
+                </div>
               </div>
             </div>
 

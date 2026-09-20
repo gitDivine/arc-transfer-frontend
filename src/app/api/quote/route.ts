@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
         transactionRequest: lifiQuote.transactionRequest
       };
     } catch (e) {
-      console.error('LI.FI Quote Error:', e.message);
+      console.error('LI.FI Quote Error:', e instanceof Error ? e.message : 'Unknown error');
       lifiLeg = {
         type: 'aggregator',
         provider: 'lifi',

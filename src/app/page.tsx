@@ -28,7 +28,7 @@ const SUPPORTED_DESTINATIONS = [
     id: 137, 
     name: 'Polygon', 
     tokens: [
-      { symbol: 'MATIC', address: '0x0000000000000000000000000000000000000000' },
+      { symbol: 'POL', address: '0x0000000000000000000000000000000000000000' },
       { symbol: 'USDC', address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359' }
     ]
   },
@@ -76,7 +76,7 @@ const SUPPORTED_DESTINATIONS = [
     id: 137, 
     name: 'Polygon', 
     tokens: [
-      { symbol: 'MATIC', address: '0x0000000000000000000000000000000000000000' },
+      { symbol: 'POL', address: '0x0000000000000000000000000000000000000000' },
       { symbol: 'USDC', address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359' }
     ]
   },

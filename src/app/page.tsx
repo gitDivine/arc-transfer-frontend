@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useAccount, useConnect, useDisconnect, useWriteContract, useSendTransaction, useSwitchChain } from 'wagmi';
-import { injected } from 'wagmi/connectors';
 import { ArrowRight, Loader2, CheckCircle2, Zap, ArrowDown, Activity } from 'lucide-react';
 import { parseUnits } from 'viem';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,7 +14,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 
 export default function Home() {
   const { address, isConnected, chainId } = useAccount();
-  const { connect } = useConnect();
+  const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChainAsync } = useSwitchChain();
   
@@ -155,7 +154,7 @@ export default function Home() {
               </motion.div>
             ) : (
               <button 
-                onClick={() => connect({ connector: injected() })}
+                onClick={() => connect({ connector: connectors[0] })}
                 className="bg-white text-black hover:bg-emerald-400 transition-colors rounded-full px-6 py-2.5 text-sm font-bold tracking-tight shadow-lg"
               >
                 Connect Wallet
@@ -262,7 +261,7 @@ export default function Home() {
             <div className="mt-6">
               {!isConnected ? (
                 <button 
-                  onClick={() => connect({ connector: injected() })}
+                  onClick={() => connect({ connector: connectors[0] })}
                   className="w-full py-4 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold tracking-tight transition-colors"
                 >
                   Connect to Swap

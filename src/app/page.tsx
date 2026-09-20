@@ -1,5 +1,5 @@
-import { HUB_CHAINS } from '@/config/networks';
 'use client';
+import { HUB_CHAINS } from '@/config/networks';
 
 import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect, useWriteContract, useSendTransaction, useSwitchChain, useReadContract, usePublicClient } from 'wagmi';

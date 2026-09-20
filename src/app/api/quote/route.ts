@@ -56,6 +56,8 @@ export async function POST(req: NextRequest) {
         feeCosts: lifiQuote.estimate.feeCosts,
         gasCosts: lifiQuote.estimate.gasCosts,
         expectedOutputAmount: lifiQuote.estimate.toAmount,
+        toTokenDecimals: lifiQuote.action.toToken.decimals,
+        toTokenSymbol: lifiQuote.action.toToken.symbol,
         transactionRequest: lifiQuote.transactionRequest
       };
     } catch (e) {

@@ -13,11 +13,46 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 }
 
 const SUPPORTED_DESTINATIONS = [
-  { id: 56, name: 'BNB Chain', symbol: 'BNB' },
-  { id: 42161, name: 'Arbitrum', symbol: 'ETH' },
-  { id: 10, name: 'Optimism', symbol: 'ETH' },
-  { id: 137, name: 'Polygon', symbol: 'MATIC' },
-  { id: 1, name: 'Ethereum', symbol: 'ETH' }
+  { 
+    id: 56, 
+    name: 'BNB Chain', 
+    tokens: [
+      { symbol: 'BNB', address: '0x0000000000000000000000000000000000000000' },
+      { symbol: 'USDC', address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d' }
+    ]
+  },
+  { 
+    id: 42161, 
+    name: 'Arbitrum', 
+    tokens: [
+      { symbol: 'ETH', address: '0x0000000000000000000000000000000000000000' },
+      { symbol: 'USDC', address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831' }
+    ]
+  },
+  { 
+    id: 10, 
+    name: 'Optimism', 
+    tokens: [
+      { symbol: 'ETH', address: '0x0000000000000000000000000000000000000000' },
+      { symbol: 'USDC', address: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85' }
+    ]
+  },
+  { 
+    id: 137, 
+    name: 'Polygon', 
+    tokens: [
+      { symbol: 'MATIC', address: '0x0000000000000000000000000000000000000000' },
+      { symbol: 'USDC', address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359' }
+    ]
+  },
+  { 
+    id: 1, 
+    name: 'Ethereum', 
+    tokens: [
+      { symbol: 'ETH', address: '0x0000000000000000000000000000000000000000' },
+      { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' }
+    ]
+  }
 ];
 
 export default function Home() {
@@ -35,6 +70,7 @@ export default function Home() {
   
   const [amount, setAmount] = useState('1.5');
   const [destIndex, setDestIndex] = useState(0);
+  const [destTokenIndex, setDestTokenIndex] = useState(0);
   const [quote, setQuote] = useState<any>(null);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   
@@ -62,7 +98,7 @@ export default function Home() {
           amount,
           userAddress: address,
           destinationChainId: dest.id,
-          destinationTokenAddress: '0x0000000000000000000000000000000000000000'
+          destinationTokenAddress: dest.tokens[destTokenIndex].address
         })
       });
       const data = await res.json();
@@ -288,20 +324,38 @@ export default function Home() {
             <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all focus-within:bg-white/10 focus-within:border-white/20">
               <label className="text-xs font-semibold text-white/40 tracking-wider uppercase flex items-center justify-between mb-2">
                 <span>Receive on</span>
-                <select 
-                  className="bg-[#0A0A0B] text-white border border-white/10 rounded-md px-2 py-1 outline-none text-xs"
-                  value={destIndex}
-                  onChange={(e) => setDestIndex(Number(e.target.value))}
-                >
-                  {SUPPORTED_DESTINATIONS.map((dest, i) => (
-                    <option key={dest.id} value={i}>{dest.name} ({dest.symbol})</option>
-                  ))}
-                </select>
+                <div className="flex gap-2">
+                  <select 
+                    className="bg-[#0A0A0B] text-white border border-white/10 rounded-md px-2 py-1 outline-none text-xs"
+                    value={destIndex}
+                    onChange={(e) => {
+                      setDestIndex(Number(e.target.value));
+                      setDestTokenIndex(0);
+                    }}
+                  >
+                    {SUPPORTED_DESTINATIONS.map((dest, i) => (
+                      <option key={dest.id} value={i}>{dest.name}</option>
+                    ))}
+                  </select>
+                  <select 
+                    className="bg-[#0A0A0B] text-white border border-white/10 rounded-md px-2 py-1 outline-none text-xs"
+                    value={destTokenIndex}
+                    onChange={(e) => setDestTokenIndex(Number(e.target.value))}
+                  >
+                    {SUPPORTED_DESTINATIONS[destIndex].tokens.map((token, i) => (
+                      <option key={token.symbol} value={i}>{token.symbol}</option>
+                    ))}
+                  </select>
+                </div>
               </label>
               
               <div className="flex flex-col gap-2">
                 <div className="mt-1 text-4xl font-bold tracking-tighter text-emerald-400 flex items-center justify-between">
-                  <span>{quote && quote.legs && quote.legs[1] && quote.legs[1].expectedOutputAmount ? (Number(quote.legs[1].expectedOutputAmount || 0) / 1e18).toFixed(4) : "0.00"}</span>
+                  <span>
+                    {quote && quote.legs && quote.legs[1] && quote.legs[1].expectedOutputAmount ? 
+                      (Number(quote.legs[1].expectedOutputAmount || 0) / Math.pow(10, quote.legs[1].toTokenDecimals || 18)).toFixed(4) 
+                      : "0.00"}
+                  </span>
                 </div>
               </div>
             </div>
@@ -324,7 +378,9 @@ export default function Home() {
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-white/60 font-medium">Routing</span>
-                      <span className="font-mono text-xs text-white/80 bg-white/10 px-2 py-1 rounded-md">Arc → Base → {SUPPORTED_DESTINATIONS[destIndex].name}</span>
+                      <span className="font-mono text-xs text-white/80 bg-white/10 px-2 py-1 rounded-md">
+                        Arc → Base → {SUPPORTED_DESTINATIONS[destIndex].name} ({quote.legs[1]?.toTokenSymbol || SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].symbol})
+                      </span>
                     </div>
                   </div>
                 </motion.div>

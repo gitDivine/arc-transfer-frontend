@@ -103,7 +103,14 @@ export default function Home() {
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   
   const [activeStep, setActiveStep] = useState<number>(0);
-  const [txHashes, setTxHashes] = useState<string[]>([]);
+  const [txHashes, setTxHashes] = useState<{hash: string, url: string}[]>([]);
+
+  const getExplorerUrl = (chainId: number, hash: string) => {
+    if (chainId === 5042) return `https://explorer.arc.io/tx/${hash}`;
+    if (chainId === 8453) return `https://basescan.org/tx/${hash}`;
+    if (chainId === 42161) return `https://arbiscan.io/tx/${hash}`;
+    return `https://etherscan.io/tx/${hash}`;
+  };
 
   // Auto-select optimal hub when destination changes
   useEffect(() => {
@@ -167,16 +174,6 @@ export default function Home() {
       };
 
       let data = await fetchQuote(hubIndex);
-      
-      // Fallback logic: If the default hub fails and it isn't Arbitrum, fallback to Arbitrum!
-      if ((!data.success || data.route?.legs[1]?.error) && HUB_CHAINS[hubIndex].name !== 'Arbitrum') {
-        const arbIndex = HUB_CHAINS.findIndex(h => h.name === 'Arbitrum');
-        if (arbIndex !== -1) {
-          console.log('Default hub failed. Falling back to Arbitrum...');
-          setHubIndex(arbIndex);
-          data = await fetchQuote(arbIndex);
-        }
-      }
 
       if (data.success && !data.route?.legs[1]?.error) {
         setQuote(data.route);
@@ -186,6 +183,7 @@ export default function Home() {
       }
     } catch (err) {
       console.error(err);
+      alert("Failed to get quote");
     } finally {
       setIsLoadingQuote(false);
     }
@@ -229,7 +227,7 @@ export default function Home() {
         functionName: 'approve',
         args: [cctpLeg.instructions.contractAddress as `0x${string}`, parseUnits(amount, 6)]
       });
-      setTxHashes(prev => [...prev, cctpApproveTx]);
+      setTxHashes(prev => [...prev, { hash: cctpApproveTx, url: getExplorerUrl(cctpLeg.sourceChainId, cctpApproveTx) }]);
       
       setActiveStep(2); // Sign CCTP Burn
       await waitForTransactionReceipt(config, { hash: cctpApproveTx });
@@ -265,7 +263,7 @@ export default function Home() {
         ]
       });
       
-      setTxHashes(prev => [...prev, burnTx]);
+      setTxHashes(prev => [...prev, { hash: burnTx, url: getExplorerUrl(cctpLeg.sourceChainId, burnTx) }]);
       setActiveStep(3); // Waiting for Circle Attestation
       
       // Poll Circle IRIS API (v2) for Attestation using the transaction hash
@@ -316,7 +314,7 @@ export default function Home() {
         chainId: hubChainId
       });
       
-      setTxHashes(prev => [...prev, receiveTx]);
+      setTxHashes(prev => [...prev, { hash: receiveTx, url: getExplorerUrl(hubChainId, receiveTx) }]);
       
       // Wait for receiveMessage to mine
       await waitForTransactionReceipt(config, { hash: receiveTx });
@@ -359,7 +357,7 @@ export default function Home() {
         chainId: HUB_CHAINS[hubIndex].chainId
       });
       
-      setTxHashes(prev => [...prev, approveTx]);
+      setTxHashes(prev => [...prev, { hash: approveTx, url: getExplorerUrl(HUB_CHAINS[hubIndex].chainId, approveTx) }]);
       setActiveStep(5); // Ready to sign LI.FI
       
       // Wait for approval to mine securely
@@ -372,7 +370,7 @@ export default function Home() {
         chainId: HUB_CHAINS[hubIndex].chainId
       });
       
-      setTxHashes(prev => [...prev, lifiTx]);
+      setTxHashes(prev => [...prev, { hash: lifiTx, url: getExplorerUrl(HUB_CHAINS[hubIndex].chainId, lifiTx) }]);
       setActiveStep(6); 
       
     } catch (err: any) {
@@ -718,12 +716,12 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-4 pt-4 border-t border-white/10 space-y-2"
                 >
-                  {txHashes.map((hash, i) => (
-                    <div key={hash} className="flex items-center gap-2 text-xs font-mono text-emerald-400/80 bg-emerald-950/30 p-2 rounded-lg border border-emerald-900/50">
-                      <CheckCircle2 size={14} className="text-emerald-400" />
-                      <span>Leg {i+1}: {hash.slice(0,8)}...{hash.slice(-6)}</span>
-                    </div>
-                  ))}
+                  {txHashes.map((tx, i) => (
+                  <a key={tx.hash} href={tx.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-mono text-emerald-400/80 hover:text-emerald-300 bg-emerald-950/30 p-2 rounded-lg border border-emerald-900/50 transition-colors">
+                    <CheckCircle2 size={14} className="text-emerald-400" />
+                    <span>Leg {i+1}: {tx.hash.slice(0,8)}...{tx.hash.slice(-6)}</span>
+                  </a>
+                ))}
                 </motion.div>
               )}
             </AnimatePresence>

@@ -10,10 +10,13 @@ export async function POST(req: NextRequest) {
       amount,
       userAddress,
       destinationChainId,
-      destinationTokenAddress
+      destinationTokenAddress,
+      hubChainId,
+      hubTokenAddress,
+      hubChainName
     } = body;
 
-    if (!amount || !userAddress || !destinationChainId || !destinationTokenAddress) {
+    if (!amount || !userAddress || !destinationChainId || !destinationTokenAddress || !hubChainId || !hubTokenAddress) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
@@ -23,8 +26,8 @@ export async function POST(req: NextRequest) {
       type: 'cctp',
       sourceChain: networks.arcMainnet.name,
       sourceChainId: networks.arcMainnet.chainId,
-      destinationChain: networks.baseMainnet.name,
-      destinationChainId: networks.baseMainnet.chainId,
+      destinationChain: hubChainName,
+      destinationChainId: hubChainId,
       token: networks.arcMainnet.usdcAddress,
       amount: amountInMicro,
       estimatedTimeSeconds: 20,
@@ -33,15 +36,13 @@ export async function POST(req: NextRequest) {
         functionName: 'depositForBurn',
       }
     };
-
-    const baseMainnetUSDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
     
     let lifiLeg;
     try {
       const lifiQuote = await lifiService.getQuote({
-        fromChain: 8453,
+        fromChain: hubChainId,
         toChain: destinationChainId,
-        fromToken: baseMainnetUSDC,
+        fromToken: hubTokenAddress,
         toToken: destinationTokenAddress,
         fromAmount: amountInMicro,
         fromAddress: userAddress
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
       lifiLeg = {
         type: 'aggregator',
         provider: 'lifi',
-        sourceChainId: 8453,
+        sourceChainId: hubChainId,
         destinationChainId: destinationChainId,
         estimatedTimeSeconds: lifiQuote.estimate.executionDuration,
         feeCosts: lifiQuote.estimate.feeCosts,

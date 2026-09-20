@@ -71,6 +71,7 @@ export default function Home() {
   const [amount, setAmount] = useState('');
   const [destIndex, setDestIndex] = useState(0);
   const [destTokenIndex, setDestTokenIndex] = useState(0);
+  const [hubIndex, setHubIndex] = useState(0);
   const [quote, setQuote] = useState<any>(null);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   
@@ -128,7 +129,7 @@ export default function Home() {
 
   const handleExecute = async () => {
     if (!quote || !quote.legs || !address) return;
-    
+    setTxHashes([]);
     try {
       const cctpLeg = quote.legs[0];
       if (chainId !== cctpLeg.sourceChainId) {
@@ -205,7 +206,7 @@ export default function Home() {
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
       
-      setActiveStep(3.5); // Switch & Claim on Base
+      setActiveStep(3.5); // Switch & Claim on Hub
       const lifiLeg = quote.legs[1];
       if (chainId !== lifiLeg.sourceChainId) {
         await switchChainAsync({ chainId: lifiLeg.sourceChainId });
@@ -213,7 +214,7 @@ export default function Home() {
       }
       
       // 3. Claim USDC on Base
-      const baseMessageTransmitter = '0x81d40f21f12a8f0e3252bccb954d722d4c464b64'; // V2 MessageTransmitter
+      const baseMessageTransmitter = HUB_CHAINS[hubIndex].cctpMessageTransmitter;
       const receiveTx = await writeContractAsync({
         address: baseMessageTransmitter,
         abi: [{
@@ -437,6 +438,23 @@ export default function Home() {
               </div>
             </div>
 
+            
+            {/* Hub Selector */}
+            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all focus-within:bg-white/10 focus-within:border-white/20 mt-2">
+              <label className="text-xs font-semibold text-white/40 tracking-wider uppercase flex items-center justify-between mb-2">
+                <span>Route Through (Hub)</span>
+                <select 
+                  className="bg-[#0A0A0B] text-white border border-white/10 rounded-md px-2 py-1 outline-none text-xs"
+                  value={hubIndex}
+                  onChange={(e) => setHubIndex(Number(e.target.value))}
+                >
+                  {HUB_CHAINS.map((hub, i) => (
+                    <option key={hub.chainId} value={i}>{hub.name} (CCTP)</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
             {/* Output Section */}
             <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all focus-within:bg-white/10 focus-within:border-white/20">
               <label className="text-xs font-semibold text-white/40 tracking-wider uppercase flex items-center justify-between mb-2">
@@ -496,7 +514,7 @@ export default function Home() {
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-white/60 font-medium">Routing</span>
                       <span className="font-mono text-xs text-white/80 bg-white/10 px-2 py-1 rounded-md">
-                        Arc → Base → {SUPPORTED_DESTINATIONS[destIndex].name} ({quote.legs[1]?.toTokenSymbol || SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].symbol})
+                        Arc → {HUB_CHAINS[hubIndex].name} → {SUPPORTED_DESTINATIONS[destIndex].name} ({quote.legs[1]?.toTokenSymbol || SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].symbol})
                       </span>
                     </div>
                   </div>
@@ -543,7 +561,7 @@ export default function Home() {
                    activeStep === 1 ? "Approve CCTP..." :
                    activeStep === 2 ? "Sign CCTP Burn..." : 
                    activeStep === 3 ? "Waiting for Circle Attestation..." : 
-                   activeStep === 3.5 ? "Claim USDC on Base..." : 
+                   activeStep === 3.5 ? `Claim USDC on ${HUB_CHAINS[hubIndex].name}...` : 
                    activeStep === 4 ? "Approve LI.FI Bridge..." : 
                    activeStep === 5 ? "Sign LI.FI Bridge..." : "Transfer Complete"}
                 </button>

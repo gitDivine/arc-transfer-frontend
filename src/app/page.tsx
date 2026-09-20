@@ -227,7 +227,8 @@ export default function Home() {
           "type": "function"
         }],
         functionName: 'receiveMessage',
-        args: [messageBytes, attestation]
+        args: [messageBytes, attestation],
+        chainId: 8453
       });
       
       setTxHashes(prev => [...prev, receiveTx]);
@@ -244,7 +245,8 @@ export default function Home() {
         address: baseMainnetUSDC,
         abi: erc20Abi,
         functionName: 'approve',
-        args: [lifiLeg.transactionRequest.to as `0x${string}`, parseUnits(amount, 6)]
+        args: [lifiLeg.transactionRequest.to as `0x${string}`, parseUnits(amount, 6)],
+        chainId: 8453
       });
       
       setTxHashes(prev => [...prev, approveTx]);
@@ -257,6 +259,7 @@ export default function Home() {
         to: lifiLeg.transactionRequest.to as `0x${string}`,
         data: lifiLeg.transactionRequest.data as `0x${string}`,
         value: BigInt(lifiLeg.transactionRequest.value || 0),
+        chainId: 8453
       });
       
       setTxHashes(prev => [...prev, lifiTx]);

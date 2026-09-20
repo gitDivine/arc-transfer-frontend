@@ -15,6 +15,13 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 
 const SUPPORTED_DESTINATIONS = [
   { 
+    id: 4663, 
+    name: 'Robinhood Chain', 
+    tokens: [
+      { symbol: 'ETH', address: '0x0000000000000000000000000000000000000000' }
+    ]
+  },
+  { 
     id: 56, 
     name: 'BNB Chain', 
     tokens: [

@@ -13,15 +13,17 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 }
 
 const SUPPORTED_DESTINATIONS = [
-  { id: 56, name: 'BNB Chain', token: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', symbol: 'USDC' },
-  { id: 42161, name: 'Arbitrum', token: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', symbol: 'USDC' },
-  { id: 10, name: 'Optimism', token: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85', symbol: 'USDC' },
-  { id: 137, name: 'Polygon', token: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', symbol: 'USDC' },
-  { id: 1, name: 'Ethereum', token: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'USDC' }
+  { id: 56, name: 'BNB Chain', symbol: 'BNB' },
+  { id: 42161, name: 'Arbitrum', symbol: 'ETH' },
+  { id: 10, name: 'Optimism', symbol: 'ETH' },
+  { id: 137, name: 'Polygon', symbol: 'MATIC' },
+  { id: 1, name: 'Ethereum', symbol: 'ETH' }
 ];
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -33,7 +35,6 @@ export default function Home() {
   
   const [amount, setAmount] = useState('1.5');
   const [destIndex, setDestIndex] = useState(0);
-  const [destTokenAddress, setDestTokenAddress] = useState('0x0000000000000000000000000000000000000000'); // Default to native token
   const [quote, setQuote] = useState<any>(null);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   
@@ -42,6 +43,11 @@ export default function Home() {
   
   const { writeContractAsync } = useWriteContract();
   const { sendTransactionAsync } = useSendTransaction();
+
+  // Close modal when connected
+  useEffect(() => {
+    if (isConnected) setIsWalletModalOpen(false);
+  }, [isConnected]);
 
   const handleGetQuote = async () => {
     if (!address) return;
@@ -56,7 +62,7 @@ export default function Home() {
           amount,
           userAddress: address,
           destinationChainId: dest.id,
-          destinationTokenAddress: destTokenAddress
+          destinationTokenAddress: '0x0000000000000000000000000000000000000000'
         })
       });
       const data = await res.json();
@@ -130,6 +136,47 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#000000] text-white selection:bg-emerald-500/30 overflow-hidden relative font-sans">
       
+      {/* Wallet Modal */}
+      <AnimatePresence>
+        {isWalletModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsWalletModalOpen(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-[#0A0A0B] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-blue-400" />
+              <h2 className="text-xl font-bold tracking-tight mb-4">Connect Wallet</h2>
+              <div className="flex flex-col gap-2">
+                {connectors.map((connector) => (
+                  <button 
+                    key={connector.uid}
+                    onClick={() => connect({ connector })}
+                    className="flex items-center justify-between w-full p-4 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 rounded-xl transition-all"
+                  >
+                    <span className="font-semibold text-white/90">{connector.name}</span>
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                  </button>
+                ))}
+                {connectors.length === 0 && (
+                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
+                    No web3 wallet detected. Please install MetaMask, Rabby, or Coinbase Wallet.
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Background Orbs */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-emerald-600/20 blur-[150px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 blur-[150px] rounded-full pointer-events-none" />
@@ -169,25 +216,12 @@ export default function Home() {
                 </button>
               </motion.div>
             ) : (
-              <div className="flex gap-2">
-                {connectors.map((connector) => (
-                  <button 
-                    key={connector.uid}
-                    onClick={() => connect({ connector })}
-                    className="bg-white text-black hover:bg-emerald-400 transition-colors rounded-full px-6 py-2.5 text-sm font-bold tracking-tight shadow-lg"
-                  >
-                    Connect {connector.name}
-                  </button>
-                ))}
-                {connectors.length === 0 && (
-                  <button 
-                    onClick={() => alert("No wallet installed or detected!")}
-                    className="bg-white text-black hover:bg-emerald-400 transition-colors rounded-full px-6 py-2.5 text-sm font-bold tracking-tight shadow-lg"
-                  >
-                    Connect Wallet
-                  </button>
-                )}
-              </div>
+              <button 
+                onClick={() => setIsWalletModalOpen(true)}
+                className="bg-white text-black hover:bg-emerald-400 transition-colors rounded-full px-6 py-2.5 text-sm font-bold tracking-tight shadow-lg"
+              >
+                Connect Wallet
+              </button>
             )}
           </div>
         </motion.header>
@@ -260,22 +294,14 @@ export default function Home() {
                   onChange={(e) => setDestIndex(Number(e.target.value))}
                 >
                   {SUPPORTED_DESTINATIONS.map((dest, i) => (
-                    <option key={dest.id} value={i}>{dest.name}</option>
+                    <option key={dest.id} value={i}>{dest.name} ({dest.symbol})</option>
                   ))}
                 </select>
               </label>
               
               <div className="flex flex-col gap-2">
-                <input 
-                  type="text"
-                  value={destTokenAddress}
-                  onChange={e => setDestTokenAddress(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 text-white/80 rounded-lg px-3 py-2 text-sm outline-none placeholder-white/20"
-                  placeholder="Paste any token address (e.g. 0x... for native or ERC20)"
-                />
-                
                 <div className="mt-1 text-4xl font-bold tracking-tighter text-emerald-400 flex items-center justify-between">
-                  <span>{quote && quote.legs && quote.legs[1] && quote.legs[1].expectedOutputAmount ? (Number(quote.legs[1].expectedOutputAmount || 0) / 1e6).toFixed(4) : "0.00"}</span>
+                  <span>{quote && quote.legs && quote.legs[1] && quote.legs[1].expectedOutputAmount ? (Number(quote.legs[1].expectedOutputAmount || 0) / 1e18).toFixed(4) : "0.00"}</span>
                 </div>
               </div>
             </div>
@@ -298,7 +324,7 @@ export default function Home() {
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-white/60 font-medium">Routing</span>
-                      <span className="font-mono text-xs text-white/80 bg-white/10 px-2 py-1 rounded-md">Arc → Base → BNB</span>
+                      <span className="font-mono text-xs text-white/80 bg-white/10 px-2 py-1 rounded-md">Arc → Base → {SUPPORTED_DESTINATIONS[destIndex].name}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -315,25 +341,12 @@ export default function Home() {
                   Loading...
                 </button>
               ) : !isConnected ? (
-                <div className="flex flex-col gap-2">
-                  {connectors.map((connector) => (
-                    <button 
-                      key={connector.uid}
-                      onClick={() => connect({ connector })}
-                      className="w-full py-4 bg-white/10 hover:bg-emerald-400 text-white hover:text-black rounded-xl font-bold tracking-tight transition-colors"
-                    >
-                      Connect {connector.name} to Swap
-                    </button>
-                  ))}
-                  {connectors.length === 0 && (
-                    <button 
-                      onClick={() => alert("No wallet installed or detected!")}
-                      className="w-full py-4 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold tracking-tight transition-colors"
-                    >
-                      Connect to Swap (No Wallet Detected)
-                    </button>
-                  )}
-                </div>
+                <button 
+                  onClick={() => setIsWalletModalOpen(true)}
+                  className="w-full py-4 bg-white/10 hover:bg-emerald-400 text-white hover:text-black rounded-xl font-bold tracking-tight transition-colors"
+                >
+                  Connect to Swap
+                </button>
               ) : !quote ? (
                 <button
                   onClick={handleGetQuote}

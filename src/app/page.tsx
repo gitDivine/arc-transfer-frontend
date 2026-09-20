@@ -167,9 +167,9 @@ export default function Home() {
         functionName: 'depositForBurn',
         args: [
           parseUnits(amount, 6),
-          0,
+          6, // Base CCTP Domain
           mintRecipient as `0x${string}`, 
-          '0x0000000000000000000000000000000000000000'
+          arcUSDC as `0x${string}` // The actual USDC token to burn
         ]
       });
       

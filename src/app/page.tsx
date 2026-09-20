@@ -157,7 +157,10 @@ export default function Home() {
               { "internalType": "uint256", "name": "amount", "type": "uint256" },
               { "internalType": "uint32", "name": "destinationDomain", "type": "uint32" },
               { "internalType": "bytes32", "name": "mintRecipient", "type": "bytes32" },
-              { "internalType": "address", "name": "burnToken", "type": "address" }
+              { "internalType": "address", "name": "burnToken", "type": "address" },
+              { "internalType": "bytes32", "name": "destinationCaller", "type": "bytes32" },
+              { "internalType": "uint256", "name": "maxFee", "type": "uint256" },
+              { "internalType": "uint32", "name": "minFinalityThreshold", "type": "uint32" }
             ],
             "name": "depositForBurn",
             "outputs": [{ "internalType": "uint64", "name": "_nonce", "type": "uint64" }],
@@ -169,7 +172,10 @@ export default function Home() {
           parseUnits(amount, 6),
           6, // Base CCTP Domain
           mintRecipient as `0x${string}`, 
-          arcUSDC as `0x${string}` // The actual USDC token to burn
+          arcUSDC as `0x${string}`, // The actual USDC token to burn
+          '0x0000000000000000000000000000000000000000000000000000000000000000', // destinationCaller
+          0n, // maxFee
+          2000 // minFinalityThreshold (Standard Transfer)
         ]
       });
       

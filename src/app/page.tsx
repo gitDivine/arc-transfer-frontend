@@ -213,7 +213,7 @@ export default function Home() {
       }
       
       // 3. Claim USDC on Base
-      const baseMessageTransmitter = '0xAD09780d193884d503182aD4588450C416D6F9D4';
+      const baseMessageTransmitter = '0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d'; // V2 MessageTransmitter
       const receiveTx = await writeContractAsync({
         address: baseMessageTransmitter,
         abi: [{

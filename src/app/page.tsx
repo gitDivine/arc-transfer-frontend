@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect, useWriteContract, useSendTransaction, useSwitchChain } from 'wagmi';
 import { Loader2, CheckCircle2, Zap, ArrowDown, Activity } from 'lucide-react';
 import { parseUnits } from 'viem';

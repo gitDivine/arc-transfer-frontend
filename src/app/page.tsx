@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useConnect, useDisconnect, useWriteContract, useSendTransaction, useSwitchChain } from 'wagmi';
+import { useAccount, useConnect, useDisconnect, useWriteContract, useSendTransaction, useSwitchChain, useReadContract } from 'wagmi';
 import { Loader2, CheckCircle2, Zap, ArrowDown, Activity } from 'lucide-react';
-import { parseUnits } from 'viem';
+import { parseUnits, erc20Abi } from 'viem';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -68,7 +68,7 @@ export default function Home() {
   const { disconnect } = useDisconnect();
   const { switchChainAsync } = useSwitchChain();
   
-  const [amount, setAmount] = useState('1.5');
+  const [amount, setAmount] = useState('');
   const [destIndex, setDestIndex] = useState(0);
   const [destTokenIndex, setDestTokenIndex] = useState(0);
   const [quote, setQuote] = useState<any>(null);
@@ -79,6 +79,19 @@ export default function Home() {
   
   const { writeContractAsync } = useWriteContract();
   const { sendTransactionAsync } = useSendTransaction();
+
+  const { data: usdcBalance } = useReadContract({
+    address: '0x3600000000000000000000000000000000000000', // Arc Mainnet USDC
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: 5042
+  });
+
+  // Clear quote when inputs change
+  useEffect(() => {
+    setQuote(null);
+  }, [amount, destIndex, destTokenIndex]);
 
   // Close modal when connected
   useEffect(() => {
@@ -299,17 +312,32 @@ export default function Home() {
             
             {/* Input Section */}
             <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all focus-within:bg-white/10 focus-within:border-white/20">
-              <label className="text-xs font-semibold text-white/40 tracking-wider uppercase flex justify-between">
-                <span>Pay on Arc Mainnet</span>
-                <span>USDC</span>
-              </label>
-              <input 
-                type="number"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                className="w-full bg-transparent text-4xl font-bold tracking-tighter outline-none mt-2 placeholder-white/20"
-                placeholder="0.00"
-              />
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-xs font-semibold text-white/40 tracking-wider uppercase">
+                  Pay on Arc Mainnet
+                </label>
+                {isConnected && (
+                  <div className="flex items-center gap-2 text-xs text-white/50">
+                    <span>Balance: {usdcBalance !== undefined ? (Number(usdcBalance) / 1e6).toFixed(2) : '0.00'}</span>
+                    <button 
+                      onClick={() => setAmount(usdcBalance ? (Number(usdcBalance) / 1e6).toString() : '0')}
+                      className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors"
+                    >
+                      MAX
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-between items-center">
+                <input 
+                  type="number"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  className="w-full bg-transparent text-4xl font-bold tracking-tighter outline-none placeholder-white/20"
+                  placeholder="0.00"
+                />
+                <span className="text-xl font-bold text-white/80 pr-2">USDC</span>
+              </div>
             </div>
 
             {/* Separator / Swap Icon */}

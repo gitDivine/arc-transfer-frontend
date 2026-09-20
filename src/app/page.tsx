@@ -134,7 +134,19 @@ export default function Home() {
         await switchChainAsync({ chainId: cctpLeg.sourceChainId });
       }
       
-      setActiveStep(1);
+      setActiveStep(1); // Approve CCTP
+      
+      const arcUSDC = '0x3600000000000000000000000000000000000000';
+      const cctpApproveTx = await writeContractAsync({
+        address: arcUSDC,
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [cctpLeg.instructions.contractAddress as `0x${string}`, parseUnits(amount, 6)]
+      });
+      setTxHashes(prev => [...prev, cctpApproveTx]);
+      
+      setActiveStep(2); // Sign CCTP Burn
+      await new Promise(resolve => setTimeout(resolve, 5000)); // wait for approve to mine
       
       const mintRecipient = '0x000000000000000000000000' + address.slice(2).toLowerCase();
       
@@ -162,7 +174,7 @@ export default function Home() {
       });
       
       setTxHashes(prev => [...prev, burnTx]);
-      setActiveStep(2); // Now in waiting for relayer state
+      setActiveStep(3); // Waiting for relayer
       
       const lifiLeg = quote.legs[1];
       if (chainId !== lifiLeg.sourceChainId) {
@@ -207,7 +219,7 @@ export default function Home() {
         throw new Error("CCTP Relayer is taking longer than expected. Please manually execute the bridge from Base later.");
       }
       
-      setActiveStep(3); // Now ready to approve
+      setActiveStep(4); // Ready to approve LI.FI
       
       // Approve LI.FI to spend USDC
       const approveTx = await writeContractAsync({
@@ -218,7 +230,7 @@ export default function Home() {
       });
       
       setTxHashes(prev => [...prev, approveTx]);
-      setActiveStep(4);
+      setActiveStep(5); // Ready to sign LI.FI
       
       // Give the network a few seconds to mine the approval
       await new Promise(resolve => setTimeout(resolve, 8000));
@@ -230,7 +242,7 @@ export default function Home() {
       });
       
       setTxHashes(prev => [...prev, lifiTx]);
-      setActiveStep(5); 
+      setActiveStep(6); 
       
     } catch (err) {
       console.error(err);
@@ -505,12 +517,13 @@ export default function Home() {
                     activeStep > 0 ? "bg-white/10 text-white/50" : "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                   )}
                 >
-                  {activeStep > 0 && activeStep < 5 ? <Loader2 className="animate-spin text-emerald-500" size={18} /> : null}
+                  {activeStep > 0 && activeStep < 6 ? <Loader2 className="animate-spin text-emerald-500" size={18} /> : null}
                   {activeStep === 0 ? "Confirm Bridge" : 
-                   activeStep === 1 ? "Sign CCTP Burn..." : 
-                   activeStep === 2 ? "Waiting for CCTP Relayer..." : 
-                   activeStep === 3 ? "Approve LI.FI Bridge..." : 
-                   activeStep === 4 ? "Sign LI.FI Bridge..." : "Transfer Complete"}
+                   activeStep === 1 ? "Approve CCTP..." :
+                   activeStep === 2 ? "Sign CCTP Burn..." : 
+                   activeStep === 3 ? "Waiting for CCTP Relayer..." : 
+                   activeStep === 4 ? "Approve LI.FI Bridge..." : 
+                   activeStep === 5 ? "Sign LI.FI Bridge..." : "Transfer Complete"}
                 </button>
               )}
             </div>

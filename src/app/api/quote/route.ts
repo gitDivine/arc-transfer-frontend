@@ -21,15 +21,15 @@ export async function POST(req: NextRequest) {
 
     const cctpLeg = {
       type: 'cctp',
-      sourceChain: networks.arcTestnet.name,
-      sourceChainId: networks.arcTestnet.chainId,
-      destinationChain: networks.baseSepolia.name,
-      destinationChainId: networks.baseSepolia.chainId,
-      token: networks.arcTestnet.usdcAddress,
+      sourceChain: networks.arcMainnet.name,
+      sourceChainId: networks.arcMainnet.chainId,
+      destinationChain: networks.baseMainnet.name,
+      destinationChainId: networks.baseMainnet.chainId,
+      token: networks.arcMainnet.usdcAddress,
       amount: amountInMicro,
       estimatedTimeSeconds: 20,
       instructions: {
-        contractAddress: networks.arcTestnet.cctpTokenMessenger,
+        contractAddress: networks.arcMainnet.cctpTokenMessenger,
         functionName: 'depositForBurn',
       }
     };

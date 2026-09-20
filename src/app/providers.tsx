@@ -3,23 +3,27 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { baseSepolia, bsc } from 'wagmi/chains';
+import { base, bsc, arbitrum, optimism, polygon, mainnet } from 'wagmi/chains';
 
-const arcTestnet = {
-  id: 5042002,
-  name: 'Arc Testnet',
-  nativeCurrency: { name: 'Arc', symbol: 'ARC', decimals: 18 },
+const arcMainnet = {
+  id: 5042,
+  name: 'Arc Mainnet',
+  nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
   rpcUrls: {
-    default: { http: ['https://rpc.testnet.arc.network/'] },
+    default: { http: ['https://rpc.mainnet.arc.io'] },
   },
 } as const;
 
 const config = createConfig({
-  chains: [arcTestnet, baseSepolia, bsc],
+  chains: [arcMainnet, base, bsc, arbitrum, optimism, polygon, mainnet],
   transports: {
-    [arcTestnet.id]: http(),
-    [baseSepolia.id]: http(),
+    [arcMainnet.id]: http(),
+    [base.id]: http(),
     [bsc.id]: http(),
+    [arbitrum.id]: http(),
+    [optimism.id]: http(),
+    [polygon.id]: http(),
+    [mainnet.id]: http(),
   },
 });
 

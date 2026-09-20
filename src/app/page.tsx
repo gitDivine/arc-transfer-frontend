@@ -212,7 +212,7 @@ export default function Home() {
             {/* Input Section */}
             <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all focus-within:bg-white/10 focus-within:border-white/20">
               <label className="text-xs font-semibold text-white/40 tracking-wider uppercase flex justify-between">
-                <span>Pay on Arc Testnet</span>
+                <span>Pay on Arc Mainnet</span>
                 <span>USDC</span>
               </label>
               <input 

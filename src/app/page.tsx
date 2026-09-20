@@ -220,7 +220,7 @@ export default function Home() {
       setTxHashes(prev => [...prev, cctpApproveTx]);
       
       setActiveStep(2); // Sign CCTP Burn
-      await waitForTransactionReceipt(config, { hash: approveTx });
+      await waitForTransactionReceipt(config, { hash: cctpApproveTx });
       
       const mintRecipient = '0x000000000000000000000000' + address.slice(2).toLowerCase();
       
@@ -338,8 +338,9 @@ export default function Home() {
       setTxHashes(prev => [...prev, lifiTx]);
       setActiveStep(6); 
       
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert("Execution failed: " + (err?.message || String(err)));
       setActiveStep(0);
     }
   };

@@ -183,32 +183,22 @@ export default function Home() {
       setTxHashes(prev => [...prev, burnTx]);
       setActiveStep(3); // Waiting for Circle Attestation
       
-      if (!publicClient) throw new Error("Public client not found");
-      
-      // 1. Get transaction receipt to extract MessageBytes
-      const receipt = await publicClient.waitForTransactionReceipt({ hash: burnTx });
-      const messageSentTopic = '0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036';
-      const log = receipt.logs.find(l => l.topics[0] === messageSentTopic);
-      if (!log) throw new Error("MessageSent log not found");
-      
-      const decodedLog = decodeEventLog({
-        abi: [{ type: 'event', name: 'MessageSent', inputs: [{ indexed: false, name: 'message', type: 'bytes' }] }],
-        data: log.data,
-        topics: log.topics,
-      });
-      const messageBytes = decodedLog.args.message;
-      const messageHash = keccak256(messageBytes as `0x${string}`);
-      
-      // 2. Poll Circle IRIS API for Attestation
+      // Poll Circle IRIS API (v2) for Attestation using the transaction hash
       let attestation = '';
+      let messageBytes = '';
       while (true) {
         try {
-          const res = await fetch(`https://iris-api.circle.com/v1/attestations/${messageHash}`);
+          // Arc Mainnet Domain is 26.
+          const res = await fetch(`https://iris-api.circle.com/v2/messages/26?transactionHash=${burnTx}`);
           if (res.status === 200) {
             const data = await res.json();
-            if (data.status === 'complete' || data.attestation) {
-              attestation = data.attestation;
-              break;
+            if (data.messages && data.messages.length > 0) {
+              const msg = data.messages[0];
+              if (msg.status === 'complete' || msg.attestation) {
+                attestation = msg.attestation;
+                messageBytes = msg.message; // v2 endpoint returns the message bytes directly!
+                break;
+              }
             }
           }
         } catch (e) {}

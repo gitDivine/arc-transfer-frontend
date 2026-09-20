@@ -674,11 +674,16 @@ export default function Home() {
                 </button>
               ) : (
                 <button
-                  onClick={handleExecute}
-                  disabled={activeStep > 0}
+                  onClick={activeStep === 6 ? () => {
+                    setQuote(null);
+                    setActiveStep(0);
+                    setTxHashes([]);
+                    setAmount('');
+                  } : handleExecute}
+                  disabled={activeStep > 0 && activeStep < 6}
                   className={cn(
                     "w-full py-4 rounded-xl font-bold tracking-tight transition-all flex items-center justify-center gap-2",
-                    activeStep > 0 ? "bg-white/10 text-white/50" : "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                    activeStep > 0 && activeStep < 6 ? "bg-white/10 text-white/50" : "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                   )}
                 >
                   {activeStep > 0 && activeStep < 6 ? <Loader2 className="animate-spin text-emerald-500" size={18} /> : null}
@@ -688,7 +693,7 @@ export default function Home() {
                    activeStep === 3 ? "Waiting for Circle Attestation..." : 
                    activeStep === 3.5 ? `Claim USDC on ${HUB_CHAINS[hubIndex].name}...` : 
                    activeStep === 4 ? "Approve LI.FI Bridge..." : 
-                   activeStep === 5 ? "Sign LI.FI Bridge..." : "Transfer Complete"}
+                   activeStep === 5 ? "Sign LI.FI Bridge..." : "Make Another Transfer"}
                 </button>
               )}
             </div>

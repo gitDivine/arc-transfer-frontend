@@ -12,6 +12,14 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
+const SUPPORTED_DESTINATIONS = [
+  { id: 56, name: 'BNB Chain', token: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', symbol: 'USDC' },
+  { id: 42161, name: 'Arbitrum', token: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', symbol: 'USDC' },
+  { id: 10, name: 'Optimism', token: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85', symbol: 'USDC' },
+  { id: 137, name: 'Polygon', token: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', symbol: 'USDC' },
+  { id: 1, name: 'Ethereum', token: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', symbol: 'USDC' }
+];
+
 export default function Home() {
   const { address, isConnected, chainId } = useAccount();
   const { connect, connectors } = useConnect();
@@ -19,7 +27,8 @@ export default function Home() {
   const { switchChainAsync } = useSwitchChain();
   
   const [amount, setAmount] = useState('1.5');
-  const [quote, setQuote] = useState<unknown>(null);
+  const [destIndex, setDestIndex] = useState(0);
+  const [quote, setQuote] = useState<any>(null);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   
   const [activeStep, setActiveStep] = useState<number>(0);
@@ -33,14 +42,15 @@ export default function Home() {
     setIsLoadingQuote(true);
     setQuote(null);
     try {
+      const dest = SUPPORTED_DESTINATIONS[destIndex];
       const res = await fetch('/api/quote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount,
           userAddress: address,
-          destinationChainId: 56, 
-          destinationTokenAddress: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d' 
+          destinationChainId: dest.id,
+          destinationTokenAddress: dest.token
         })
       });
       const data = await res.json();
@@ -222,13 +232,22 @@ export default function Home() {
             </div>
 
             {/* Output Section */}
-            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all">
-              <label className="text-xs font-semibold text-white/40 tracking-wider uppercase flex justify-between">
-                <span>Receive on BNB Chain</span>
-                <span>USDC</span>
+            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all focus-within:bg-white/10 focus-within:border-white/20">
+              <label className="text-xs font-semibold text-white/40 tracking-wider uppercase flex items-center justify-between">
+                <span>Receive on</span>
+                <select 
+                  className="bg-[#0A0A0B] text-white border border-white/10 rounded-md px-2 py-1 outline-none text-xs"
+                  value={destIndex}
+                  onChange={(e) => setDestIndex(Number(e.target.value))}
+                >
+                  {SUPPORTED_DESTINATIONS.map((dest, i) => (
+                    <option key={dest.id} value={i}>{dest.name}</option>
+                  ))}
+                </select>
               </label>
-              <div className="mt-2 text-4xl font-bold tracking-tighter text-white/60">
-                {quote ? (Number(quote.expectedOutputAmount || 0) / 1e6).toFixed(4) : "0.00"}
+              <div className="mt-2 text-4xl font-bold tracking-tighter text-white/60 flex items-center justify-between">
+                <span>{quote && quote.legs && quote.legs[1] && quote.legs[1].expectedOutputAmount ? (Number(quote.legs[1].expectedOutputAmount || 0) / 1e6).toFixed(4) : "0.00"}</span>
+                <span className="text-lg text-white/40">{SUPPORTED_DESTINATIONS[destIndex].symbol}</span>
               </div>
             </div>
 

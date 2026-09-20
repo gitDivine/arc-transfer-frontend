@@ -574,8 +574,16 @@ export default function Home() {
                     className="bg-[#0A0A0B] text-white border border-white/10 rounded-md px-2 py-1 outline-none text-xs"
                     value={destIndex}
                     onChange={(e) => {
-                      setDestIndex(Number(e.target.value));
+                      const newDestIdx = Number(e.target.value);
+                      setDestIndex(newDestIdx);
                       setDestTokenIndex(0);
+                      
+                      const destChainId = SUPPORTED_DESTINATIONS[newDestIdx].id;
+                      if (destChainId === 42161) {
+                        setHubIndex(1); // Arbitrum Hub for Arbitrum dest
+                      } else {
+                        setHubIndex(0); // Base Hub for everything else
+                      }
                     }}
                   >
                     {SUPPORTED_DESTINATIONS.map((dest, i) => (
@@ -664,14 +672,26 @@ export default function Home() {
                   {isLoadingQuote ? <Loader2 className="animate-spin" size={18} /> : null}
                   {isLoadingQuote ? "Finding best route..." : "Review Route"}
                 </button>
+              ) : activeStep === 6 ? (
+                <div className="flex flex-col gap-3">
+                  <div className="w-full py-4 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl font-bold tracking-tight flex items-center justify-center gap-2">
+                    <span className="text-xl">✓</span> Transfer Successful!
+                  </div>
+                  <button
+                    onClick={() => {
+                      setQuote(null);
+                      setActiveStep(0);
+                      setTxHashes([]);
+                      setAmount('');
+                    }}
+                    className="w-full py-4 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold tracking-tight transition-all flex items-center justify-center gap-2"
+                  >
+                    Make Another Transfer
+                  </button>
+                </div>
               ) : (
                 <button
-                  onClick={activeStep === 6 ? () => {
-                    setQuote(null);
-                    setActiveStep(0);
-                    setTxHashes([]);
-                    setAmount('');
-                  } : handleExecute}
+                  onClick={handleExecute}
                   disabled={activeStep > 0 && activeStep < 6}
                   className={cn(
                     "w-full py-4 rounded-xl font-bold tracking-tight transition-all flex items-center justify-center gap-2",
@@ -685,7 +705,7 @@ export default function Home() {
                    activeStep === 3 ? "Waiting for Circle Attestation..." : 
                    activeStep === 3.5 ? `Claim USDC on ${HUB_CHAINS[hubIndex].name}...` : 
                    activeStep === 4 ? "Approve LI.FI Bridge..." : 
-                   activeStep === 5 ? "Sign LI.FI Bridge..." : "Make Another Transfer"}
+                   activeStep === 5 ? "Sign LI.FI Bridge..." : ""}
                 </button>
               )}
             </div>

@@ -3,7 +3,7 @@ import { HUB_CHAINS } from '@/config/networks';
 
 import { useState, useEffect } from 'react';
 import { useConfig } from 'wagmi';
-import { waitForTransactionReceipt } from 'wagmi/actions';
+import { waitForTransactionReceipt, getAccount } from 'wagmi/actions';
 import { useAccount, useConnect, useDisconnect, useWriteContract, useSendTransaction, useSwitchChain, useReadContract, usePublicClient } from 'wagmi';
 import { Loader2, CheckCircle2, Zap, ArrowDown, Activity } from 'lucide-react';
 import { parseUnits, erc20Abi, decodeEventLog, keccak256 } from 'viem';
@@ -204,8 +204,9 @@ export default function Home() {
     setTxHashes([]);
     try {
       const cctpLeg = quote.legs[0];
-      if (chainId !== cctpLeg.sourceChainId) {
+      if (getAccount(config).chainId !== cctpLeg.sourceChainId) {
         await switchChainAsync({ chainId: cctpLeg.sourceChainId });
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
       
       setActiveStep(1); // Approve CCTP
@@ -280,7 +281,7 @@ export default function Home() {
       
       setActiveStep(3.5); // Switch & Claim on Hub
       const lifiLeg = quote.legs[1];
-      if (chainId !== lifiLeg.sourceChainId) {
+      if (getAccount(config).chainId !== lifiLeg.sourceChainId) {
         await switchChainAsync({ chainId: lifiLeg.sourceChainId });
         await new Promise(resolve => setTimeout(resolve, 2000));
       }

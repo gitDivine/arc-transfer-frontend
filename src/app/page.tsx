@@ -2,6 +2,8 @@
 import { HUB_CHAINS } from '@/config/networks';
 
 import { useState, useEffect } from 'react';
+import { useConfig } from 'wagmi';
+import { waitForTransactionReceipt } from 'wagmi/actions';
 import { useAccount, useConnect, useDisconnect, useWriteContract, useSendTransaction, useSwitchChain, useReadContract, usePublicClient } from 'wagmi';
 import { Loader2, CheckCircle2, Zap, ArrowDown, Activity } from 'lucide-react';
 import { parseUnits, erc20Abi, decodeEventLog, keccak256 } from 'viem';
@@ -128,6 +130,7 @@ export default function Home() {
   const { writeContractAsync } = useWriteContract();
   const { sendTransactionAsync } = useSendTransaction();
   const publicClient = usePublicClient();
+  const config = useConfig();
 
   const { data: usdcBalance } = useReadContract({
     address: '0x3600000000000000000000000000000000000000', // Arc Mainnet USDC
@@ -217,7 +220,7 @@ export default function Home() {
       setTxHashes(prev => [...prev, cctpApproveTx]);
       
       setActiveStep(2); // Sign CCTP Burn
-      await new Promise(resolve => setTimeout(resolve, 5000)); // wait for approve to mine
+      await waitForTransactionReceipt(config, { hash: approveTx });
       
       const mintRecipient = '0x000000000000000000000000' + address.slice(2).toLowerCase();
       
@@ -305,7 +308,7 @@ export default function Home() {
       
       // Wait for receiveMessage to mine
       // Since we switched networks, publicClient might still point to Arc, so we use a small delay instead of waitForTransactionReceipt to be safe
-      await new Promise(resolve => setTimeout(resolve, 8000));
+      await waitForTransactionReceipt(config, { hash: receiveTx });
       
       setActiveStep(4); // Ready to approve LI.FI
       const baseMainnetUSDC = HUB_CHAINS[hubIndex].usdcAddress;
@@ -322,8 +325,8 @@ export default function Home() {
       setTxHashes(prev => [...prev, approveTx]);
       setActiveStep(5); // Ready to sign LI.FI
       
-      // Give the network a few seconds to mine the approval
-      await new Promise(resolve => setTimeout(resolve, 8000));
+      // Wait for approval to mine securely
+      await waitForTransactionReceipt(config, { hash: approveTx });
       
       const lifiTx = await sendTransactionAsync({
         to: lifiLeg.transactionRequest.to as `0x${string}`,

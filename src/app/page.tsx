@@ -118,9 +118,9 @@ export default function Home() {
     if (matchedHubIndex !== -1) {
       setHubIndex(matchedHubIndex);
     } else {
-      // Default to Arbitrum or Base for cheapest fees to non-hub chains like BNB/Robinhood
-      const arbIndex = HUB_CHAINS.findIndex(h => h.name === 'Arbitrum');
-      setHubIndex(arbIndex !== -1 ? arbIndex : 0);
+      // Default to Base, fallback to Arbitrum for cheapest fees to non-hub chains like BNB/Robinhood
+      const baseIndex = HUB_CHAINS.findIndex(h => h.name === 'Base');
+      setHubIndex(baseIndex !== -1 ? baseIndex : 0);
     }
   }, [destIndex]);
 
@@ -153,22 +153,41 @@ export default function Home() {
     setQuote(null);
     try {
       const dest = SUPPORTED_DESTINATIONS[destIndex];
-      const res = await fetch('/api/quote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount,
-          userAddress: address,
-          destinationChainId: dest.id,
-          destinationTokenAddress: dest.tokens[destTokenIndex].address,
-          hubChainId: HUB_CHAINS[hubIndex].chainId,
-          hubTokenAddress: HUB_CHAINS[hubIndex].usdcAddress,
-          hubChainName: HUB_CHAINS[hubIndex].name
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
+      
+      const fetchQuote = async (hIndex: number) => {
+        const res = await fetch('/api/quote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount,
+            userAddress: address,
+            destinationChainId: dest.id,
+            destinationTokenAddress: dest.tokens[destTokenIndex].address,
+            hubChainId: HUB_CHAINS[hIndex].chainId,
+            hubTokenAddress: HUB_CHAINS[hIndex].usdcAddress,
+            hubChainName: HUB_CHAINS[hIndex].name
+          })
+        });
+        return await res.json();
+      };
+
+      let data = await fetchQuote(hubIndex);
+      
+      // Fallback logic: If the default hub fails and it isn't Arbitrum, fallback to Arbitrum!
+      if ((!data.success || data.route?.legs[1]?.error) && HUB_CHAINS[hubIndex].name !== 'Arbitrum') {
+        const arbIndex = HUB_CHAINS.findIndex(h => h.name === 'Arbitrum');
+        if (arbIndex !== -1) {
+          console.log('Default hub failed. Falling back to Arbitrum...');
+          setHubIndex(arbIndex);
+          data = await fetchQuote(arbIndex);
+        }
+      }
+
+      if (data.success && !data.route?.legs[1]?.error) {
         setQuote(data.route);
+      } else {
+        console.error("Quote failed entirely:", data.route?.legs[1]?.error || data.error);
+        alert("Failed to find a viable bridge route. " + (data.route?.legs[1]?.error || data.error));
       }
     } catch (err) {
       console.error(err);

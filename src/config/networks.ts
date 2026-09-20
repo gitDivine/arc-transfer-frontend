@@ -23,13 +23,6 @@ export const networks: Record<string, NetworkConfig> = {
 
 export const HUB_CHAINS = [
   {
-    name: 'Ethereum',
-    chainId: 1,
-    domain: 0,
-    usdcAddress: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' as `0x${string}`,
-    cctpMessageTransmitter: '0x81D40F212879f82dE79A1dC54921E727d4c464b6' as `0x${string}`,
-  },
-  {
     name: 'Base',
     chainId: 8453,
     domain: 6,
@@ -41,27 +34,6 @@ export const HUB_CHAINS = [
     chainId: 42161,
     domain: 3,
     usdcAddress: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831' as `0x${string}`,
-    cctpMessageTransmitter: '0x81D40F21F12A8F0E3252Bccb954D722d4c464B64' as `0x${string}`,
-  },
-  {
-    name: 'Optimism',
-    chainId: 10,
-    domain: 2,
-    usdcAddress: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85' as `0x${string}`,
-    cctpMessageTransmitter: '0x81D40F21F12A8F0E3252Bccb954D722d4c464B64' as `0x${string}`,
-  },
-  {
-    name: 'Polygon',
-    chainId: 137,
-    domain: 7,
-    usdcAddress: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359' as `0x${string}`,
-    cctpMessageTransmitter: '0x81D40F21F12A8F0E3252Bccb954D722d4c464B64' as `0x${string}`,
-  },
-  {
-    name: 'Avalanche',
-    chainId: 43114,
-    domain: 1,
-    usdcAddress: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E' as `0x${string}`,
     cctpMessageTransmitter: '0x81D40F21F12A8F0E3252Bccb954D722d4c464B64' as `0x${string}`,
   }
 ];

@@ -311,15 +311,35 @@ export default function Home() {
       // Since we switched networks, publicClient might still point to Arc, so we use a small delay instead of waitForTransactionReceipt to be safe
       await waitForTransactionReceipt(config, { hash: receiveTx });
       
+      // REFETCH LI.FI QUOTE to avoid expired LayerZero fees / swap data
+      const freshQuoteRes = await fetch('/api/quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          userAddress: address,
+          destinationChainId: SUPPORTED_DESTINATIONS[destIndex].id,
+          destinationTokenAddress: SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].address,
+          hubChainId: HUB_CHAINS[hubIndex].chainId,
+          hubTokenAddress: HUB_CHAINS[hubIndex].usdcAddress,
+          hubChainName: HUB_CHAINS[hubIndex].name
+        })
+      });
+      const freshQuoteData = await freshQuoteRes.json();
+      if (!freshQuoteData.success || freshQuoteData.route?.legs[1]?.error) {
+        throw new Error("Failed to refresh LI.FI quote: " + (freshQuoteData.route?.legs[1]?.error || "Unknown"));
+      }
+      const freshLifiLeg = freshQuoteData.route.legs[1];
+      
       setActiveStep(4); // Ready to approve LI.FI
       const baseMainnetUSDC = HUB_CHAINS[hubIndex].usdcAddress;
       
       // Approve LI.FI to spend USDC
       const approveTx = await writeContractAsync({
-        address: baseMainnetUSDC,
+        address: baseMainnetUSDC as `0x${string}`,
         abi: erc20Abi,
         functionName: 'approve',
-        args: [lifiLeg.transactionRequest.to as `0x${string}`, parseUnits(amount, 6)],
+        args: [freshLifiLeg.transactionRequest.to as `0x${string}`, parseUnits(amount, 6)],
         chainId: HUB_CHAINS[hubIndex].chainId
       });
       
@@ -330,9 +350,9 @@ export default function Home() {
       await waitForTransactionReceipt(config, { hash: approveTx });
       
       const lifiTx = await sendTransactionAsync({
-        to: lifiLeg.transactionRequest.to as `0x${string}`,
-        data: lifiLeg.transactionRequest.data as `0x${string}`,
-        value: BigInt(lifiLeg.transactionRequest.value || 0),
+        to: freshLifiLeg.transactionRequest.to as `0x${string}`,
+        data: freshLifiLeg.transactionRequest.data as `0x${string}`,
+        value: BigInt(freshLifiLeg.transactionRequest.value || 0),
         chainId: HUB_CHAINS[hubIndex].chainId
       });
       

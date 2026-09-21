@@ -286,39 +286,7 @@ export default function Home() {
   const handleExecute = async () => {
     if (!quote || !quote.legs || !address) return;
 
-    if (SUPPORTED_DESTINATIONS[destIndex].name === 'Solana') {
-      try {
-        const { solanaService } = await import('@/services/solana');
-        const isSolanaDest = SUPPORTED_DESTINATIONS[destIndex].name.toLowerCase() === 'solana';
-        let targetDestAddress = customDestAddress;
-        
-        if (isSelfSwap) {
-          if (isSolanaDest) {
-            const solWallet = wallets.find(w => w.walletClientType === 'phantom' || w.walletClientType === 'solflare' || (w as any).chainType === 'solana');
-            targetDestAddress = solWallet?.address || '';
-          } else {
-            targetDestAddress = address || '';
-          }
-        }
-        
-        if (!targetDestAddress) {
-          throw new Error("Please provide a valid destination address");
-        }
 
-        const res = await solanaService.executeSolanaTransfer({
-          amountInMicro: parseUnits(amount, 6).toString(),
-          sourceAddress: address,
-          destinationAddress: targetDestAddress,
-          writeContractAsync
-        });
-        setExecuteHash(res.txHash as `0x${string}`);
-        setExecuteStatus('success');
-      } catch (err: any) {
-        console.error(err);
-        setExecuteStatus('error');
-      }
-      return;
-    }
 
     
     // Prevent race conditions where the user clicks Execute while a new quote is fetching
@@ -454,6 +422,18 @@ export default function Home() {
         return;
       }
       
+      const isSolanaDest = SUPPORTED_DESTINATIONS[destIndex].name.toLowerCase() === 'solana';
+      let targetDestAddress = customDestAddress;
+      
+      if (isSelfSwap) {
+        if (isSolanaDest) {
+          const solWallet = wallets.find(w => w.walletClientType === 'phantom' || w.walletClientType === 'solflare' || (w as any).chainType === 'solana');
+          targetDestAddress = solWallet?.address || '';
+        } else {
+          targetDestAddress = address || '';
+        }
+      }
+
       // REFETCH LI.FI QUOTE to avoid expired LayerZero fees / swap data
       const freshQuoteRes = await fetch('/api/quote', {
         method: 'POST',
@@ -461,6 +441,7 @@ export default function Home() {
         body: JSON.stringify({
           amount,
           userAddress: address,
+          destinationAddress: targetDestAddress,
           destinationChainId: SUPPORTED_DESTINATIONS[destIndex].id,
           destinationTokenAddress: SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].address,
           hubChainId: HUB_CHAINS[hubIndex].chainId,

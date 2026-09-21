@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 import { PrivyProvider } from '@privy-io/react-auth';
+import { toSolanaWalletConnectors } from '@privy-io/react-auth/solana';
 import { WagmiProvider, createConfig } from '@privy-io/wagmi';
 import { http } from 'wagmi';
 import { base, bsc, arbitrum, optimism, polygon, mainnet } from 'wagmi/chains';
@@ -33,6 +34,7 @@ export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
   // The user should set this in .env.local
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID || '';
+  const solanaConnectors = toSolanaWalletConnectors({ shouldAutoConnect: false });
 
   return (
     <PrivyProvider
@@ -44,7 +46,7 @@ export function Providers({ children }: { children: ReactNode }) {
         },
         externalWallets: {
           solana: {
-            connectors: []
+            connectors: solanaConnectors
           }
         }
       }}

@@ -231,7 +231,21 @@ export default function Home() {
       const dest = SUPPORTED_DESTINATIONS[destIndex];
       
       const fetchQuote = async (hIndex: number) => {
-        const targetDestAddress = isSelfSwap ? address : customDestAddress;
+        const isSolanaDest = dest.name.toLowerCase() === 'solana';
+        let targetDestAddress = customDestAddress;
+        
+        if (isSelfSwap) {
+          if (isSolanaDest) {
+            const solWallet = wallets.find(w => w.walletClientType === 'phantom' || w.walletClientType === 'solflare' || (w as any).chainType === 'solana');
+            targetDestAddress = solWallet?.address || '';
+            if (!targetDestAddress) {
+               throw new Error("No Solana wallet connected. Please link a Solana wallet in Privy or use 'Send to another address'.");
+            }
+          } else {
+            targetDestAddress = address || '';
+          }
+        }
+
         if (!targetDestAddress) {
           throw new Error("Please enter a destination address");
         }
@@ -275,10 +289,20 @@ export default function Home() {
     if (SUPPORTED_DESTINATIONS[destIndex].name === 'Solana') {
       try {
         const { solanaService } = await import('@/services/solana');
-        const targetDestAddress = isSelfSwap ? (wallets.find(w => w.walletClientType === 'phantom' || w.chainType === 'solana')?.address || customDestAddress) : customDestAddress;
+        const isSolanaDest = SUPPORTED_DESTINATIONS[destIndex].name.toLowerCase() === 'solana';
+        let targetDestAddress = customDestAddress;
+        
+        if (isSelfSwap) {
+          if (isSolanaDest) {
+            const solWallet = wallets.find(w => w.walletClientType === 'phantom' || w.walletClientType === 'solflare' || (w as any).chainType === 'solana');
+            targetDestAddress = solWallet?.address || '';
+          } else {
+            targetDestAddress = address || '';
+          }
+        }
         
         if (!targetDestAddress) {
-          throw new Error("Please provide a valid Solana destination address");
+          throw new Error("Please provide a valid destination address");
         }
 
         const res = await solanaService.executeSolanaTransfer({

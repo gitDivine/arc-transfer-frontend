@@ -53,8 +53,7 @@ export async function POST(req: NextRequest) {
           toToken: destinationTokenAddress,
           fromAmount: amountInMicro,
           fromAddress: userAddress,
-          toAddress: destinationAddress,
-          allowBridges: ['stargateV2', 'stargate', 'across', 'hop', 'cctp', 'layerswap']
+          toAddress: destinationAddress
         });
         
         lifiLeg = {

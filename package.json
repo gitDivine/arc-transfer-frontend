@@ -30,7 +30,8 @@
     "react-dom": "^18",
     "tailwind-merge": "^3.7.0",
     "viem": "2.56.0",
-    "wagmi": "^3.7.7"
+    "wagmi": "^3.7.7",
+    "@farcaster/mini-app-solana": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^20",

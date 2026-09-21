@@ -9,7 +9,12 @@ const nextConfig = {
       'pino-pretty': false,
       lokijs: false,
       encoding: false,
-      accounts: false // Fix Wagmi Tempo bug
+      accounts: false, // Fix Wagmi Tempo bug
+      '@x402/evm/upto/client': false,
+      '@x402/evm/exact/client': false,
+      '@x402/core/client': false,
+      '@x402/svm/exact/client': false,
+      '@x402/evm': false
     };
     return config;
   },

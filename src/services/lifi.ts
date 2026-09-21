@@ -5,6 +5,7 @@ export interface LifiQuoteParams {
   toToken: string;
   fromAmount: string;
   fromAddress: string;
+  toAddress?: string;
   allowBridges?: string[];
 }
 
@@ -19,6 +20,9 @@ export class LifiService {
     url.searchParams.append('toToken', params.toToken);
     url.searchParams.append('fromAmount', params.fromAmount);
     url.searchParams.append('fromAddress', params.fromAddress);
+    if (params.toAddress) {
+      url.searchParams.append('toAddress', params.toAddress);
+    }
     if (params.allowBridges) {
       url.searchParams.append('allowBridges', params.allowBridges.join(','));
     }

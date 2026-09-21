@@ -4,7 +4,8 @@ import { HUB_CHAINS } from '@/config/networks';
 import { useState, useEffect } from 'react';
 import { useConfig } from 'wagmi';
 import { waitForTransactionReceipt, getAccount } from 'wagmi/actions';
-import { useAccount, useConnect, useDisconnect, useWriteContract, useSendTransaction, useSwitchChain, useReadContract, usePublicClient } from 'wagmi';
+import { useAccount, useWriteContract, useSendTransaction, useSwitchChain, useReadContract, usePublicClient } from 'wagmi';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { Loader2, CheckCircle2, Zap, ArrowDown, Activity } from 'lucide-react';
 import { parseUnits, erc20Abi, decodeEventLog, keccak256 } from 'viem';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,11 +18,22 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 
 const SUPPORTED_DESTINATIONS = [
   { 
+    id: 1151111081099710, 
+    name: 'Solana', 
+    tokens: [
+      { symbol: 'SOL', address: '11111111111111111111111111111111' },
+      { symbol: 'USDC', address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' },
+      { symbol: 'Custom Token...', address: 'CUSTOM' }
+    ]
+  },
+
+  { 
     id: 8453, 
     name: 'Base', 
     tokens: [
       { symbol: 'ETH', address: '0x0000000000000000000000000000000000000000' },
-      { symbol: 'USDC', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' }
+      { symbol: 'USDC', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' },
+      { symbol: 'Custom Token...', address: 'CUSTOM' }
     ]
   },
   { 
@@ -29,7 +41,8 @@ const SUPPORTED_DESTINATIONS = [
     name: 'Polygon', 
     tokens: [
       { symbol: 'POL', address: '0x0000000000000000000000000000000000000000' },
-      { symbol: 'USDC', address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359' }
+      { symbol: 'USDC', address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359' },
+      { symbol: 'Custom Token...', address: 'CUSTOM' }
     ]
   },
   { 
@@ -37,7 +50,8 @@ const SUPPORTED_DESTINATIONS = [
     name: 'Avalanche', 
     tokens: [
       { symbol: 'AVAX', address: '0x0000000000000000000000000000000000000000' },
-      { symbol: 'USDC', address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E' }
+      { symbol: 'USDC', address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E' },
+      { symbol: 'Custom Token...', address: 'CUSTOM' }
     ]
   },
 
@@ -45,7 +59,8 @@ const SUPPORTED_DESTINATIONS = [
     id: 4663, 
     name: 'Robinhood Chain', 
     tokens: [
-      { symbol: 'ETH', address: '0x0000000000000000000000000000000000000000' }
+      { symbol: 'ETH', address: '0x0000000000000000000000000000000000000000' },
+      { symbol: 'Custom Token...', address: 'CUSTOM' }
     ]
   },
   { 
@@ -53,7 +68,8 @@ const SUPPORTED_DESTINATIONS = [
     name: 'BNB Chain', 
     tokens: [
       { symbol: 'BNB', address: '0x0000000000000000000000000000000000000000' },
-      { symbol: 'USDC', address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d' }
+      { symbol: 'USDC', address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d' },
+      { symbol: 'Custom Token...', address: 'CUSTOM' }
     ]
   },
   { 
@@ -61,7 +77,8 @@ const SUPPORTED_DESTINATIONS = [
     name: 'Arbitrum', 
     tokens: [
       { symbol: 'ETH', address: '0x0000000000000000000000000000000000000000' },
-      { symbol: 'USDC', address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831' }
+      { symbol: 'USDC', address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831' },
+      { symbol: 'Custom Token...', address: 'CUSTOM' }
     ]
   },
   { 
@@ -69,7 +86,8 @@ const SUPPORTED_DESTINATIONS = [
     name: 'Optimism', 
     tokens: [
       { symbol: 'ETH', address: '0x0000000000000000000000000000000000000000' },
-      { symbol: 'USDC', address: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85' }
+      { symbol: 'USDC', address: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85' },
+      { symbol: 'Custom Token...', address: 'CUSTOM' }
     ]
   },
   { 
@@ -77,27 +95,31 @@ const SUPPORTED_DESTINATIONS = [
     name: 'Ethereum', 
     tokens: [
       { symbol: 'ETH', address: '0x0000000000000000000000000000000000000000' },
-      { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' }
+      { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' },
+      { symbol: 'Custom Token...', address: 'CUSTOM' }
     ]
   }
 ];
 
 export default function Home() {
-  const [mounted, setMounted] = useState(false);
-  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const { ready, authenticated, login, logout, user } = usePrivy();
+  const { wallets } = useWallets();
   
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const { address, isConnected, chainId } = useAccount();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
   const { switchChainAsync } = useSwitchChain();
   
   const [amount, setAmount] = useState('');
   const [destIndex, setDestIndex] = useState(0);
   const [destTokenIndex, setDestTokenIndex] = useState(0);
+  
+  // Custom Token Support
+  const [customCA, setCustomCA] = useState('');
+  const [customTokenMeta, setCustomTokenMeta] = useState<{name: string, symbol: string, decimals: number} | null>(null);
+
+  // Unified Transfer Support
+  const [isSelfSwap, setIsSelfSwap] = useState(true);
+  const [customDestAddress, setCustomDestAddress] = useState('');
+
   const [hubIndex, setHubIndex] = useState(0);
   const [quote, setQuote] = useState<any>(null);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
@@ -144,12 +166,64 @@ export default function Home() {
     setQuote(null);
   }, [amount, destIndex, destTokenIndex]);
 
-  // Close modal when connected
+
+
+
   useEffect(() => {
-    if (isConnected) setIsWalletModalOpen(false);
-  }, [isConnected]);
+    if (SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].address !== 'CUSTOM' || !customCA || customCA.length < 32) {
+      setCustomTokenMeta(null);
+      return;
+    }
+
+    const fetchMeta = async () => {
+      try {
+        if (SUPPORTED_DESTINATIONS[destIndex].name === 'Solana') {
+          const { Connection, PublicKey } = await import('@solana/web3.js');
+          const connection = new Connection("https://api.mainnet-beta.solana.com");
+          const mint = new PublicKey(customCA);
+          const info = await connection.getParsedAccountInfo(mint);
+          if (info.value?.data && 'parsed' in info.value.data) {
+            const data = info.value.data.parsed.info;
+            setCustomTokenMeta({
+              name: "Solana Token",
+              symbol: "SPL",
+              decimals: data.decimals
+            });
+          }
+        } else {
+          const { createPublicClient, http, erc20Abi } = await import('viem');
+          // For now just use public rpc based on chain id, ideally we'd map it
+          const rpcs: Record<number, string> = {
+            8453: 'https://mainnet.base.org',
+            137: 'https://polygon-rpc.com',
+            43114: 'https://api.avax.network/ext/bc/C/rpc',
+            56: 'https://bsc-dataseed.binance.org',
+            42161: 'https://arb1.arbitrum.io/rpc',
+            10: 'https://mainnet.optimism.io',
+            1: 'https://eth.llamarpc.com'
+          };
+          const rpc = rpcs[SUPPORTED_DESTINATIONS[destIndex].id];
+          if (!rpc) return;
+
+          const client = createPublicClient({ transport: http(rpc) });
+          
+          const [name, symbol, decimals] = await Promise.all([
+            client.readContract({ address: customCA as `0x${string}`, abi: erc20Abi, functionName: 'name' }),
+            client.readContract({ address: customCA as `0x${string}`, abi: erc20Abi, functionName: 'symbol' }),
+            client.readContract({ address: customCA as `0x${string}`, abi: erc20Abi, functionName: 'decimals' })
+          ]);
+          setCustomTokenMeta({ name: name as string, symbol: symbol as string, decimals: decimals as number });
+        }
+      } catch (e) {
+        console.error(e);
+        setCustomTokenMeta(null);
+      }
+    };
+    fetchMeta();
+  }, [customCA, destIndex, destTokenIndex]);
 
   const handleGetQuote = async () => {
+
     if (!address) return;
     setIsLoadingQuote(true);
     setQuote(null);
@@ -157,12 +231,18 @@ export default function Home() {
       const dest = SUPPORTED_DESTINATIONS[destIndex];
       
       const fetchQuote = async (hIndex: number) => {
+        const targetDestAddress = isSelfSwap ? address : customDestAddress;
+        if (!targetDestAddress) {
+          throw new Error("Please enter a destination address");
+        }
+
         const res = await fetch('/api/quote', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             amount,
             userAddress: address,
+            destinationAddress: targetDestAddress,
             destinationChainId: dest.id,
             destinationTokenAddress: dest.tokens[destTokenIndex].address,
             hubChainId: HUB_CHAINS[hIndex].chainId,
@@ -191,6 +271,31 @@ export default function Home() {
 
   const handleExecute = async () => {
     if (!quote || !quote.legs || !address) return;
+
+    if (SUPPORTED_DESTINATIONS[destIndex].name === 'Solana') {
+      try {
+        const { solanaService } = await import('@/services/solana');
+        const targetDestAddress = isSelfSwap ? (wallets.find(w => w.walletClientType === 'phantom' || w.chainType === 'solana')?.address || customDestAddress) : customDestAddress;
+        
+        if (!targetDestAddress) {
+          throw new Error("Please provide a valid Solana destination address");
+        }
+
+        const res = await solanaService.executeSolanaTransfer({
+          amountInMicro: parseUnits(amount, 6).toString(),
+          sourceAddress: address,
+          destinationAddress: targetDestAddress,
+          writeContractAsync
+        });
+        setExecuteHash(res.txHash as `0x${string}`);
+        setExecuteStatus('success');
+      } catch (err: any) {
+        console.error(err);
+        setExecuteStatus('error');
+      }
+      return;
+    }
+
     
     // Prevent race conditions where the user clicks Execute while a new quote is fetching
     const expectedHubChainId = HUB_CHAINS[hubIndex].chainId;
@@ -383,46 +488,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#000000] text-white selection:bg-emerald-500/30 overflow-hidden relative font-sans">
       
-      {/* Wallet Modal */}
-      <AnimatePresence>
-        {isWalletModalOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setIsWalletModalOpen(false)}
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              onClick={e => e.stopPropagation()}
-              className="bg-[#0A0A0B] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-blue-400" />
-              <h2 className="text-xl font-bold tracking-tight mb-4">Connect Wallet</h2>
-              <div className="flex flex-col gap-2">
-                {connectors.map((connector) => (
-                  <button 
-                    key={connector.uid}
-                    onClick={() => connect({ connector })}
-                    className="flex items-center justify-between w-full p-4 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 rounded-xl transition-all"
-                  >
-                    <span className="font-semibold text-white/90">{connector.name}</span>
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                  </button>
-                ))}
-                {connectors.length === 0 && (
-                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
-                    No web3 wallet detected. Please install MetaMask, Rabby, or Coinbase Wallet.
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       {/* Background Orbs */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-emerald-600/20 blur-[150px] rounded-full pointer-events-none" />
@@ -443,7 +509,7 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            {!mounted ? null : isConnected ? (
+            {!ready ? null : authenticated ? (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -456,7 +522,7 @@ export default function Home() {
                   </span>
                 </div>
                 <button 
-                  onClick={() => disconnect()}
+                  onClick={() => logout()}
                   className="bg-white/10 hover:bg-white/20 transition-colors rounded-full px-4 py-1.5 text-xs font-semibold"
                 >
                   Disconnect
@@ -464,7 +530,7 @@ export default function Home() {
               </motion.div>
             ) : (
               <button 
-                onClick={() => setIsWalletModalOpen(true)}
+                onClick={() => login()}
                 className="bg-white text-black hover:bg-emerald-400 transition-colors rounded-full px-6 py-2.5 text-sm font-bold tracking-tight shadow-lg"
               >
                 Connect Wallet
@@ -563,6 +629,33 @@ export default function Home() {
               </label>
             </div>
 
+            {/* Unified Transfer UI */}
+            <div className={cn("border rounded-2xl p-4 mt-2 transition-all", !isSelfSwap ? "bg-red-500/5 border-red-500/20" : "bg-white/5 border-white/5")}>
+              <div className="flex gap-4 mb-3">
+                <button 
+                  onClick={() => setIsSelfSwap(true)}
+                  className={`text-sm font-semibold pb-1 border-b-2 transition-all ${isSelfSwap ? 'border-emerald-400 text-emerald-400' : 'border-transparent hover:text-white text-white/50'}`}
+                >
+                  Transfer to my wallet
+                </button>
+                <button 
+                  onClick={() => setIsSelfSwap(false)}
+                  className={`text-sm font-semibold pb-1 border-b-2 transition-all ${!isSelfSwap ? 'border-red-400 text-red-400' : 'border-transparent hover:text-white text-white/50'}`}
+                >
+                  Send to another address
+                </button>
+              </div>
+              {!isSelfSwap && (
+                <input
+                  type="text"
+                  placeholder="Destination Address (0x...)"
+                  value={customDestAddress}
+                  onChange={(e) => setCustomDestAddress(e.target.value)}
+                  className="w-full bg-[#0A0A0B] border border-red-500/30 rounded-xl px-4 py-3 text-sm outline-none focus:border-red-500 transition-colors placeholder-white/20"
+                />
+              )}
+            </div>
+
             {/* Output Section */}
             <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all focus-within:bg-white/10 focus-within:border-white/20">
               <label className="text-xs font-semibold text-white/40 tracking-wider uppercase flex items-center justify-between mb-2">
@@ -600,6 +693,23 @@ export default function Home() {
                 </div>
               </label>
               
+              {SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].address === 'CUSTOM' && (
+                <div className="mb-3">
+                  <input
+                    type="text"
+                    placeholder="Custom Token Contract Address (0x... or Base58)"
+                    value={customCA}
+                    onChange={(e) => setCustomCA(e.target.value)}
+                    className="w-full bg-[#0A0A0B] border border-emerald-500/30 rounded-xl px-4 py-2 text-sm outline-none focus:border-emerald-500 transition-colors placeholder-white/20"
+                  />
+                  {customTokenMeta && (
+                    <div className="text-xs text-emerald-400 mt-1 pl-2 font-mono">
+                      Found: {customTokenMeta.name} ({customTokenMeta.symbol}) - {customTokenMeta.decimals} decimals
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex flex-col gap-2">
                   <div className="mt-1 text-4xl font-bold tracking-tighter text-emerald-400 flex items-center justify-between">
                     <span>
@@ -647,16 +757,16 @@ export default function Home() {
 
             {/* Action Button */}
             <div className="mt-6">
-              {!mounted ? (
+              {!ready ? (
                 <button 
                   disabled
                   className="w-full py-4 bg-white/5 text-white/50 rounded-xl font-bold tracking-tight"
                 >
                   Loading...
                 </button>
-              ) : !isConnected ? (
+              ) : !authenticated ? (
                 <button 
-                  onClick={() => setIsWalletModalOpen(true)}
+                  onClick={() => login()}
                   className="w-full py-4 bg-white/10 hover:bg-emerald-400 text-white hover:text-black rounded-xl font-bold tracking-tight transition-colors"
                 >
                   Connect to Swap

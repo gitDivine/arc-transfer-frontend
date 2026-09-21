@@ -9,6 +9,7 @@ export async function POST(req: NextRequest) {
     const { 
       amount,
       userAddress,
+      destinationAddress,
       destinationChainId,
       destinationTokenAddress,
       hubChainId,
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
       hubChainName
     } = body;
 
-    if (!amount || !userAddress || !destinationChainId || !destinationTokenAddress || !hubChainId || !hubTokenAddress) {
+    if (!amount || !userAddress || !destinationAddress || !destinationChainId || !destinationTokenAddress || !hubChainId || !hubTokenAddress) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
           toToken: destinationTokenAddress,
           fromAmount: amountInMicro,
           fromAddress: userAddress,
+          toAddress: destinationAddress,
           allowBridges: ['stargateV2', 'stargate', 'across', 'hop', 'cctp', 'layerswap']
         });
         

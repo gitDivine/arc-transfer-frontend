@@ -2,7 +2,9 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
-import { WagmiProvider, createConfig, http, injected } from 'wagmi';
+import { PrivyProvider } from '@privy-io/react-auth';
+import { WagmiProvider, createConfig } from '@privy-io/wagmi';
+import { http } from 'wagmi';
 import { base, bsc, arbitrum, optimism, polygon, mainnet } from 'wagmi/chains';
 
 const arcMainnet = {
@@ -16,7 +18,6 @@ const arcMainnet = {
 
 const config = createConfig({
   chains: [arcMainnet, base, bsc, arbitrum, optimism, polygon, mainnet],
-  connectors: [injected()],
   transports: {
     [arcMainnet.id]: http(),
     [base.id]: http(),
@@ -30,12 +31,29 @@ const config = createConfig({
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
+  // The user should set this in .env.local
+  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID || '';
 
   return (
-    <WagmiProvider config={config}>
+    <PrivyProvider
+      appId={appId}
+      config={{
+        appearance: {
+          theme: 'dark',
+          accentColor: '#676FFF',
+        },
+        externalWallets: {
+          solana: {
+            connectors: []
+          }
+        }
+      }}
+    >
       <QueryClientProvider client={queryClient}>
-        {children}
+        <WagmiProvider config={config}>
+          {children}
+        </WagmiProvider>
       </QueryClientProvider>
-    </WagmiProvider>
+    </PrivyProvider>
   );
 }

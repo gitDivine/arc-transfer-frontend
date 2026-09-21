@@ -275,9 +275,9 @@ export default function Home() {
         console.error("Quote failed entirely:", data.route?.legs[1]?.error || data.error);
         alert("Failed to find a viable bridge route. " + (data.route?.legs[1]?.error || data.error));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to get quote");
+      alert(err.message || "Failed to get quote");
     } finally {
       setIsLoadingQuote(false);
     }

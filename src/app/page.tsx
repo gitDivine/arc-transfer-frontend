@@ -286,9 +286,23 @@ export default function Home() {
   const handleExecute = async () => {
     if (!quote || !quote.legs || !address) return;
 
-
-
+    const isSolanaDest = SUPPORTED_DESTINATIONS[destIndex].name.toLowerCase() === 'solana';
+    let targetDestAddress = customDestAddress;
     
+    if (isSelfSwap) {
+      if (isSolanaDest) {
+        const solWallet = wallets.find(w => w.walletClientType === 'phantom' || w.walletClientType === 'solflare' || (w as any).chainType === 'solana');
+        targetDestAddress = solWallet?.address || '';
+      } else {
+        targetDestAddress = address || '';
+      }
+    }
+
+    if (!targetDestAddress) {
+       alert("Please provide a valid destination address");
+       return;
+    }
+
     // Prevent race conditions where the user clicks Execute while a new quote is fetching
     const expectedHubChainId = HUB_CHAINS[hubIndex].chainId;
     const expectedDestChainId = SUPPORTED_DESTINATIONS[destIndex].id;
@@ -329,7 +343,10 @@ export default function Home() {
       setActiveStep(2); // Sign CCTP Burn
       await waitForTransactionReceipt(config, { hash: cctpApproveTx });
       
-      const mintRecipient = '0x000000000000000000000000' + address.slice(2).toLowerCase();
+      // If there is no LI.FI leg, send directly to the destination address.
+      // If there IS a LI.FI leg, send to the user's wallet so they can execute the swap.
+      const rawRecipient = quote.legs.length === 1 ? targetDestAddress : address;
+      const mintRecipient = '0x000000000000000000000000' + rawRecipient.slice(2).toLowerCase();
       
       const burnTx = await writeContractAsync({
         address: cctpLeg.instructions.contractAddress as `0x${string}`,
@@ -422,17 +439,7 @@ export default function Home() {
         return;
       }
       
-      const isSolanaDest = SUPPORTED_DESTINATIONS[destIndex].name.toLowerCase() === 'solana';
-      let targetDestAddress = customDestAddress;
-      
-      if (isSelfSwap) {
-        if (isSolanaDest) {
-          const solWallet = wallets.find(w => w.walletClientType === 'phantom' || w.walletClientType === 'solflare' || (w as any).chainType === 'solana');
-          targetDestAddress = solWallet?.address || '';
-        } else {
-          targetDestAddress = address || '';
-        }
-      }
+
 
       // REFETCH LI.FI QUOTE to avoid expired LayerZero fees / swap data
       const freshQuoteRes = await fetch('/api/quote', {

@@ -27,13 +27,13 @@ export const HUB_CHAINS = [
     chainId: 8453,
     domain: 6,
     usdcAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as `0x${string}`,
-    cctpMessageTransmitter: '0x81D40F21F12A8F0E3252Bccb954D722d4c464B64' as `0x${string}`,
+    cctpMessageTransmitter: '0xAD09780d193884d503182aD4588450C416D6F9D4' as `0x${string}`,
   },
   {
     name: 'Arbitrum',
     chainId: 42161,
     domain: 3,
     usdcAddress: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831' as `0x${string}`,
-    cctpMessageTransmitter: '0x81D40F21F12A8F0E3252Bccb954D722d4c464B64' as `0x${string}`,
+    cctpMessageTransmitter: '0xC30362313FBBA5cf9163F0bb16a0e01f01A896ca' as `0x${string}`,
   }
 ];

@@ -423,22 +423,6 @@ export default function Home() {
             </div>
 
             
-            {/* Hub Selector */}
-            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all focus-within:bg-white/10 focus-within:border-white/20 mt-2">
-              <label className="text-xs font-semibold text-white/40 tracking-wider uppercase flex items-center justify-between mb-2">
-                <span>Route Through (Hub)</span>
-                <select 
-                  className="bg-[#0A0A0B] text-white border border-white/10 rounded-md px-2 py-1 outline-none text-xs"
-                  value={hubIndex}
-                  onChange={(e) => setHubIndex(Number(e.target.value))}
-                >
-                  {HUB_CHAINS.map((hub, i) => (
-                    <option key={hub.chainId} value={i}>{hub.name} (CCTP)</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
             {/* Unified Transfer UI */}
             <div className={cn("border rounded-2xl p-4 mt-2 transition-all", !isSelfSwap ? "bg-red-500/5 border-red-500/20" : "bg-white/5 border-white/5")}>
               <div className="flex gap-4 mb-3">
@@ -478,13 +462,6 @@ export default function Home() {
                       const newDestIdx = Number(e.target.value);
                       setDestIndex(newDestIdx);
                       setDestTokenIndex(0);
-                      
-                      const destChainId = SUPPORTED_DESTINATIONS[newDestIdx].id;
-                      if (destChainId === 42161) {
-                        setHubIndex(1); // Arbitrum Hub for Arbitrum dest
-                      } else {
-                        setHubIndex(0); // Base Hub for everything else
-                      }
                     }}
                   >
                     {SUPPORTED_DESTINATIONS.map((dest, i) => (

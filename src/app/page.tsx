@@ -116,10 +116,14 @@ export default function Home() {
   const [customCA, setCustomCA] = useState('');
   const [customTokenMeta, setCustomTokenMeta] = useState<{name: string, symbol: string, decimals: number} | null>(null);
 
+  const [isNetworkDropdownOpen, setIsNetworkDropdownOpen] = useState(false);
+  const [networkSearch, setNetworkSearch] = useState('');
+
+
   const [destinations, setDestinations] = useState<any[]>(DEFAULT_DESTINATIONS);
 
   useEffect(() => {
-    fetch('https://li.quest/v1/chains')
+    fetch('https://li.quest/v1/chains?chainTypes=EVM,SVM')
       .then(r => r.json())
       .then(d => {
         if (!d.chains) return;

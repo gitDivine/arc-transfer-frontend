@@ -135,7 +135,7 @@ export default function Home() {
             name: c.name,
             logoURI: c.logoURI,
             tokens: [
-              { symbol: c.nativeToken.symbol, address: '0x0000000000000000000000000000000000000000' },
+              { symbol: c.nativeToken.symbol, address: c.nativeToken.address },
               { symbol: 'USDC', address: 'USDC' },
               { symbol: 'USDT', address: 'USDT' },
               { symbol: 'Custom Token...', address: 'CUSTOM' }

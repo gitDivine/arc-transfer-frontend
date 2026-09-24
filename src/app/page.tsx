@@ -1,5 +1,5 @@
 'use client';
-import { HUB_CHAINS } from '@/config/networks';
+
 
 import { useState, useEffect } from 'react';
 import { useConfig } from 'wagmi';
@@ -120,8 +120,7 @@ export default function Home() {
   const [isSelfSwap, setIsSelfSwap] = useState(true);
   const [customDestAddress, setCustomDestAddress] = useState('');
 
-  const [hubIndex, setHubIndex] = useState(0);
-  const [quote, setQuote] = useState<any>(null);
+    const [quote, setQuote] = useState<any>(null);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   
   const [activeStep, setActiveStep] = useState<number>(0);
@@ -134,18 +133,6 @@ export default function Home() {
     return `https://etherscan.io/tx/${hash}`;
   };
 
-  // Auto-select optimal hub when destination changes
-  useEffect(() => {
-    const dest = SUPPORTED_DESTINATIONS[destIndex];
-    const matchedHubIndex = HUB_CHAINS.findIndex(h => h.chainId === dest.id);
-    if (matchedHubIndex !== -1) {
-      setHubIndex(matchedHubIndex);
-    } else {
-      // Default to Base, fallback to Arbitrum for cheapest fees to non-hub chains like BNB/Robinhood
-      const baseIndex = HUB_CHAINS.findIndex(h => h.name === 'Base');
-      setHubIndex(baseIndex !== -1 ? baseIndex : 0);
-    }
-  }, [destIndex]);
 
   
   const { writeContractAsync } = useWriteContract();
@@ -230,51 +217,20 @@ export default function Home() {
     try {
       const dest = SUPPORTED_DESTINATIONS[destIndex];
       
-      const fetchQuote = async (hIndex: number) => {
-        const isSolanaDest = dest.name.toLowerCase() === 'solana';
-        let targetDestAddress = customDestAddress;
-        
-        if (isSelfSwap) {
-          if (isSolanaDest) {
-            const solWallet = wallets.find(w => w.walletClientType === 'phantom' || w.walletClientType === 'solflare' || (w as any).chainType === 'solana');
-            targetDestAddress = solWallet?.address || '';
-            if (!targetDestAddress) {
-               throw new Error("No Solana wallet connected. Please link a Solana wallet in Privy or use 'Send to another address'.");
-            }
-          } else {
-            targetDestAddress = address || '';
-          }
-        }
-
-        if (!targetDestAddress) {
-          throw new Error("Please enter a destination address");
-        }
-
-        const res = await fetch('/api/quote', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount,
-            userAddress: address,
-            destinationAddress: targetDestAddress,
-            destinationChainId: dest.id,
-            destinationTokenAddress: dest.tokens[destTokenIndex].address,
-            hubChainId: HUB_CHAINS[hIndex].chainId,
-            hubTokenAddress: HUB_CHAINS[hIndex].usdcAddress,
-            hubChainName: HUB_CHAINS[hIndex].name
-          })
-        });
-        return await res.json();
-      };
-
-      let data = await fetchQuote(hubIndex);
-
-      if (data.success && !data.route?.legs[1]?.error) {
-        setQuote(data.route);
-      } else {
-        console.error("Quote failed entirely:", data.route?.legs[1]?.error || data.error);
-        alert("Failed to find a viable bridge route. " + (data.route?.legs[1]?.error || data.error));
-      }
+      const res = await fetch('/api/quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          userAddress: address,
+          destinationAddress: targetDestAddress,
+          destinationChainId: dest.id,
+          destinationTokenAddress: dest.tokens[destTokenIndex].address === 'CUSTOM' ? customCA : dest.tokens[destTokenIndex].address
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setQuote(data.route);
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Failed to get quote");
@@ -284,215 +240,57 @@ export default function Home() {
   };
 
   const handleExecute = async () => {
-    if (!quote || !quote.legs || !address) return;
-
-    const isSolanaDest = SUPPORTED_DESTINATIONS[destIndex].name.toLowerCase() === 'solana';
-    let targetDestAddress = customDestAddress;
-    
-    if (isSelfSwap) {
-      if (isSolanaDest) {
-        const solWallet = wallets.find(w => w.walletClientType === 'phantom' || w.walletClientType === 'solflare' || (w as any).chainType === 'solana');
-        targetDestAddress = solWallet?.address || '';
-      } else {
-        targetDestAddress = address || '';
-      }
-    }
-
-    if (!targetDestAddress) {
-       alert("Please provide a valid destination address");
-       return;
-    }
-
-    // Prevent race conditions where the user clicks Execute while a new quote is fetching
-    const expectedHubChainId = HUB_CHAINS[hubIndex].chainId;
-    const expectedDestChainId = SUPPORTED_DESTINATIONS[destIndex].id;
-    const isSameChain = expectedHubChainId === expectedDestChainId;
-    const isSameToken = HUB_CHAINS[hubIndex].usdcAddress.toLowerCase() === SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].address.toLowerCase();
-    
-    if (isSameChain && isSameToken) {
-      if (quote.legs.length !== 1) {
-        alert("The bridge route is currently recalculating for your selected networks. Please wait a few seconds.");
-        return;
-      }
-    } else {
-      if (quote.legs[1]?.sourceChainId !== expectedHubChainId || quote.legs[1]?.destinationChainId !== expectedDestChainId) {
-        alert("The bridge route is currently recalculating for your selected networks. Please wait a few seconds.");
-        return;
-      }
-    }
-
-    setTxHashes([]);
+    if (!quote || !quote.legs || !quote.legs[0]) return;
     try {
-      const cctpLeg = quote.legs[0];
-      if (getAccount(config).chainId !== cctpLeg.sourceChainId) {
-        await switchChainAsync({ chainId: cctpLeg.sourceChainId });
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-      
-      setActiveStep(1); // Approve CCTP
+      setActiveStep(1); // Approving
       
       const arcUSDC = '0x3600000000000000000000000000000000000000';
-      const cctpApproveTx = await writeContractAsync({
-        address: arcUSDC,
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [cctpLeg.instructions.contractAddress as `0x${string}`, parseUnits(amount, 6)]
-      });
-      setTxHashes(prev => [...prev, { hash: cctpApproveTx, url: getExplorerUrl(cctpLeg.sourceChainId, cctpApproveTx) }]);
-      
-      setActiveStep(2); // Sign CCTP Burn
-      await waitForTransactionReceipt(config, { hash: cctpApproveTx });
-      
-      // If there is no LI.FI leg, send directly to the destination address.
-      // If there IS a LI.FI leg, send to the user's wallet so they can execute the swap.
-      const rawRecipient = quote.legs.length === 1 ? targetDestAddress : address;
-      const mintRecipient = '0x000000000000000000000000' + rawRecipient.slice(2).toLowerCase();
-      
-      const burnTx = await writeContractAsync({
-        address: cctpLeg.instructions.contractAddress as `0x${string}`,
-        abi: [{
-            "inputs": [
-              { "internalType": "uint256", "name": "amount", "type": "uint256" },
-              { "internalType": "uint32", "name": "destinationDomain", "type": "uint32" },
-              { "internalType": "bytes32", "name": "mintRecipient", "type": "bytes32" },
-              { "internalType": "address", "name": "burnToken", "type": "address" },
-              { "internalType": "bytes32", "name": "destinationCaller", "type": "bytes32" },
-              { "internalType": "uint256", "name": "maxFee", "type": "uint256" },
-              { "internalType": "uint32", "name": "minFinalityThreshold", "type": "uint32" }
-            ],
-            "name": "depositForBurn",
-            "outputs": [{ "internalType": "uint64", "name": "_nonce", "type": "uint64" }],
-            "stateMutability": "nonpayable",
-            "type": "function"
-        }],
-        functionName: 'depositForBurn',
-        args: [
-          parseUnits(amount, 6),
-          cctpLeg.instructions.destinationDomain || 6, // Base CCTP Domain fallback
-          mintRecipient as `0x${string}`, 
-          arcUSDC as `0x${string}`, // The actual USDC token to burn
-          '0x0000000000000000000000000000000000000000000000000000000000000000', // destinationCaller
-          0n, // maxFee
-          2000 // minFinalityThreshold (Standard Transfer)
-        ]
-      });
-      
-      setTxHashes(prev => [...prev, { hash: burnTx, url: getExplorerUrl(cctpLeg.sourceChainId, burnTx) }]);
-      setActiveStep(3); // Waiting for Circle Attestation
-      
-      // Poll Circle IRIS API (v2) for Attestation using the transaction hash
-      let attestation = '';
-      let messageBytes = '';
-      while (true) {
-        try {
-          // Arc Mainnet Domain is 26.
-          const res = await fetch(`https://iris-api.circle.com/v2/messages/26?transactionHash=${burnTx}`);
-          if (res.status === 200) {
-            const data = await res.json();
-            if (data.messages && data.messages.length > 0) {
-              const msg = data.messages[0];
-              if (msg.status === 'complete' && msg.attestation && msg.message) {
-                attestation = msg.attestation;
-                messageBytes = msg.message; // v2 endpoint returns the message bytes directly!
-                break;
-              }
-            }
-          }
-        } catch (e) {}
-        await new Promise(resolve => setTimeout(resolve, 5000));
-      }
-      
-      setActiveStep(3.5); // Switch & Claim on Hub
-      const hubChainId = HUB_CHAINS[hubIndex].chainId;
-      if (getAccount(config).chainId !== hubChainId) {
-        await switchChainAsync({ chainId: hubChainId });
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-      
-      // 3. Claim USDC on Hub
-      const baseMessageTransmitter = HUB_CHAINS[hubIndex].cctpMessageTransmitter;
-      const receiveTx = await writeContractAsync({
-        address: baseMessageTransmitter,
-        abi: [{
-          "inputs": [
-            { "internalType": "bytes", "name": "message", "type": "bytes" },
-            { "internalType": "bytes", "name": "attestation", "type": "bytes" }
-          ],
-          "name": "receiveMessage",
-          "outputs": [{ "internalType": "bool", "name": "success", "type": "bool" }],
-          "stateMutability": "nonpayable",
-          "type": "function"
-        }],
-        functionName: 'receiveMessage',
-        args: [messageBytes, attestation],
-        chainId: hubChainId
-      });
-      
-      setTxHashes(prev => [...prev, { hash: receiveTx, url: getExplorerUrl(hubChainId, receiveTx) }]);
-      
-      // Wait for receiveMessage to mine
-      await waitForTransactionReceipt(config, { hash: receiveTx });
-      
-      // If there is no LI.FI leg (destination is the hub itself), we are done!
-      if (quote.legs.length === 1) {
-        setActiveStep(6);
-        return;
-      }
-      
+      const leg = quote.legs[0];
+      const lifiTxRequest = leg.transactionRequest;
 
+      if (!lifiTxRequest) throw new Error("Invalid quote: no transaction request");
 
-      // REFETCH LI.FI QUOTE to avoid expired LayerZero fees / swap data
-      const freshQuoteRes = await fetch('/api/quote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount,
-          userAddress: address,
-          destinationAddress: targetDestAddress,
-          destinationChainId: SUPPORTED_DESTINATIONS[destIndex].id,
-          destinationTokenAddress: SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].address,
-          hubChainId: HUB_CHAINS[hubIndex].chainId,
-          hubTokenAddress: HUB_CHAINS[hubIndex].usdcAddress,
-          hubChainName: HUB_CHAINS[hubIndex].name
-        })
-      });
-      const freshQuoteData = await freshQuoteRes.json();
-      if (!freshQuoteData.success || freshQuoteData.route?.legs[1]?.error) {
-        throw new Error("Failed to refresh LI.FI quote: " + (freshQuoteData.route?.legs[1]?.error || "Unknown"));
-      }
-      const freshLifiLeg = freshQuoteData.route.legs[1];
-      
-      setActiveStep(4); // Ready to approve LI.FI
-      const baseMainnetUSDC = HUB_CHAINS[hubIndex].usdcAddress;
-      
-      // Approve LI.FI to spend USDC
-      const approveTx = await writeContractAsync({
-        address: baseMainnetUSDC as `0x${string}`,
+      // 1. Check Allowance for LI.FI contract on Arc Mainnet
+      const currentAllowance = await publicClient.readContract({
+        address: arcUSDC as `0x${string}`,
         abi: erc20Abi,
-        functionName: 'approve',
-        args: [freshLifiLeg.transactionRequest.to as `0x${string}`, parseUnits(amount, 6)],
-        chainId: HUB_CHAINS[hubIndex].chainId
+        functionName: 'allowance',
+        args: [address as `0x${string}`, lifiTxRequest.to as `0x${string}`],
+        chainId: 5042
       });
-      
-      setTxHashes(prev => [...prev, { hash: approveTx, url: getExplorerUrl(HUB_CHAINS[hubIndex].chainId, approveTx) }]);
-      setActiveStep(5); // Ready to sign LI.FI
-      
-      // Wait for approval to mine securely
-      await waitForTransactionReceipt(config, { hash: approveTx });
-      
-      const lifiTx = await sendTransactionAsync({
-        to: freshLifiLeg.transactionRequest.to as `0x${string}`,
-        data: freshLifiLeg.transactionRequest.data as `0x${string}`,
-        value: BigInt(freshLifiLeg.transactionRequest.value || 0),
-        chainId: HUB_CHAINS[hubIndex].chainId
+
+      const requiredAmount = BigInt(lifiTxRequest.value || '0') > 0n ? 0n : BigInt(quote.totalAmountIn);
+
+      if ((currentAllowance as bigint) < requiredAmount) {
+        console.log("Approving LI.FI contract...");
+        const approveTx = await writeContractAsync({
+          address: arcUSDC as `0x${string}`,
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [lifiTxRequest.to as `0x${string}`, requiredAmount],
+          chainId: 5042
+        });
+        setTxHashes(prev => [...prev, { hash: approveTx, url: getExplorerUrl(5042, approveTx) }]);
+        await waitForTransactionReceipt(config, { hash: approveTx });
+      }
+
+      setActiveStep(2); // Sending Tx
+
+      // 2. Send LI.FI transaction
+      const execTx = await sendTransactionAsync({
+        to: lifiTxRequest.to,
+        data: lifiTxRequest.data,
+        value: BigInt(lifiTxRequest.value || '0'),
+        chainId: 5042
       });
-      
-      setTxHashes(prev => [...prev, { hash: lifiTx, url: getExplorerUrl(HUB_CHAINS[hubIndex].chainId, lifiTx) }]);
-      setActiveStep(6); 
-      
+
+      setTxHashes(prev => [...prev, { hash: execTx, url: getExplorerUrl(5042, execTx) }]);
+      await waitForTransactionReceipt(config, { hash: execTx });
+
+      setActiveStep(6); // Done
     } catch (err: any) {
       console.error(err);
-      alert("Execution failed: " + (err?.message || String(err)));
+      alert(err.message || 'Execution failed');
       setActiveStep(0);
     }
   };
@@ -756,10 +554,7 @@ export default function Home() {
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-white/60 font-medium">Routing</span>
                         <span className="font-mono text-xs text-white/80 bg-white/10 px-2 py-1 rounded-md">
-                          {quote?.legs?.length === 1 
-                            ? `Arc → ${HUB_CHAINS[hubIndex].name} (USDC)`
-                            : `Arc → ${HUB_CHAINS[hubIndex].name} → ${SUPPORTED_DESTINATIONS[destIndex].name} (${quote?.legs?.[1]?.toTokenSymbol || SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].symbol})`
-                          }
+                          `Arc → ${SUPPORTED_DESTINATIONS[destIndex].name} (${quote?.legs?.[0]?.toTokenSymbol || SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].symbol})`
                         </span>
                       </div>
                   </div>
@@ -820,12 +615,8 @@ export default function Home() {
                 >
                   {activeStep > 0 && activeStep < 6 ? <Loader2 className="animate-spin text-emerald-500" size={18} /> : null}
                   {activeStep === 0 ? "Confirm Bridge" : 
-                   activeStep === 1 ? "Approve CCTP..." :
-                   activeStep === 2 ? "Sign CCTP Burn..." : 
-                   activeStep === 3 ? "Waiting for Circle Attestation..." : 
-                   activeStep === 3.5 ? `Claim USDC on ${HUB_CHAINS[hubIndex].name}...` : 
-                   activeStep === 4 ? "Approve LI.FI Bridge..." : 
-                   activeStep === 5 ? "Sign LI.FI Bridge..." : ""}
+                   activeStep === 1 ? "Approve LI.FI..." :
+                   activeStep === 2 ? "Executing Transfer..." : ""}
                 </button>
               )}
             </div>

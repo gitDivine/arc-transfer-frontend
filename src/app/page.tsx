@@ -16,7 +16,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-const SUPPORTED_DESTINATIONS = [
+const DEFAULT_DESTINATIONS = [
   { 
     id: 1151111081099710, 
     name: 'Solana', 
@@ -116,6 +116,43 @@ export default function Home() {
   const [customCA, setCustomCA] = useState('');
   const [customTokenMeta, setCustomTokenMeta] = useState<{name: string, symbol: string, decimals: number} | null>(null);
 
+  const [destinations, setDestinations] = useState<any[]>(DEFAULT_DESTINATIONS);
+
+  useEffect(() => {
+    fetch('https://li.quest/v1/chains')
+      .then(r => r.json())
+      .then(d => {
+        if (!d.chains) return;
+        const topIds = [1, 8453, 42161, 10, 1151111081099710, 137, 56, 43114];
+        let lifiChains = d.chains
+          .filter((c: any) => c.id !== 5042)
+          .map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            logoURI: c.logoURI,
+            tokens: [
+              { symbol: c.nativeToken.symbol, address: '0x0000000000000000000000000000000000000000' },
+              { symbol: 'USDC', address: 'USDC' },
+              { symbol: 'USDT', address: 'USDT' },
+              { symbol: 'Custom Token...', address: 'CUSTOM' }
+            ]
+          }));
+        
+        // Sort top chains first
+        lifiChains.sort((a: any, b: any) => {
+          const aIdx = topIds.indexOf(a.id);
+          const bIdx = topIds.indexOf(b.id);
+          if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+          if (aIdx !== -1) return -1;
+          if (bIdx !== -1) return 1;
+          return a.name.localeCompare(b.name);
+        });
+        
+        setDestinations(lifiChains);
+      })
+      .catch(console.error);
+  }, []);
+
   // Unified Transfer Support
   const [isSelfSwap, setIsSelfSwap] = useState(true);
   const [customDestAddress, setCustomDestAddress] = useState('');
@@ -157,14 +194,14 @@ export default function Home() {
 
 
   useEffect(() => {
-    if (SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].address !== 'CUSTOM' || !customCA || customCA.length < 32) {
+    if (destinations[destIndex].tokens[destTokenIndex].address !== 'CUSTOM' || !customCA || customCA.length < 32) {
       setCustomTokenMeta(null);
       return;
     }
 
     const fetchMeta = async () => {
       try {
-        if (SUPPORTED_DESTINATIONS[destIndex].name === 'Solana') {
+        if (destinations[destIndex].name === 'Solana') {
           const { Connection, PublicKey } = await import('@solana/web3.js');
           const connection = new Connection("https://api.mainnet-beta.solana.com");
           const mint = new PublicKey(customCA);
@@ -189,7 +226,7 @@ export default function Home() {
             10: 'https://mainnet.optimism.io',
             1: 'https://eth.llamarpc.com'
           };
-          const rpc = rpcs[SUPPORTED_DESTINATIONS[destIndex].id];
+          const rpc = rpcs[destinations[destIndex].id];
           if (!rpc) return;
 
           const client = createPublicClient({ transport: http(rpc) });
@@ -215,7 +252,7 @@ export default function Home() {
     setIsLoadingQuote(true);
     setQuote(null);
     try {
-      const dest = SUPPORTED_DESTINATIONS[destIndex];
+      const dest = destinations[destIndex];
       
       const res = await fetch('/api/quote', {
         method: 'POST',
@@ -464,7 +501,7 @@ export default function Home() {
                       setDestTokenIndex(0);
                     }}
                   >
-                    {SUPPORTED_DESTINATIONS.map((dest, i) => (
+                    {destinations.map((dest, i) => (
                       <option key={dest.id} value={i}>{dest.name}</option>
                     ))}
                   </select>
@@ -473,14 +510,14 @@ export default function Home() {
                     value={destTokenIndex}
                     onChange={(e) => setDestTokenIndex(Number(e.target.value))}
                   >
-                    {SUPPORTED_DESTINATIONS[destIndex].tokens.map((token, i) => (
+                    {destinations[destIndex].tokens.map((token, i) => (
                       <option key={token.symbol} value={i}>{token.symbol}</option>
                     ))}
                   </select>
                 </div>
               </label>
               
-              {SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].address === 'CUSTOM' && (
+              {destinations[destIndex].tokens[destTokenIndex].address === 'CUSTOM' && (
                 <div className="mb-3">
                   <input
                     type="text"
@@ -531,7 +568,7 @@ export default function Home() {
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-white/60 font-medium">Routing</span>
                         <span className="font-mono text-xs text-white/80 bg-white/10 px-2 py-1 rounded-md">
-                          `Arc → ${SUPPORTED_DESTINATIONS[destIndex].name} (${quote?.legs?.[0]?.toTokenSymbol || SUPPORTED_DESTINATIONS[destIndex].tokens[destTokenIndex].symbol})`
+                          `Arc → ${destinations[destIndex].name} (${quote?.legs?.[0]?.toTokenSymbol || destinations[destIndex].tokens[destTokenIndex].symbol})`
                         </span>
                       </div>
                   </div>

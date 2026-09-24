@@ -614,13 +614,9 @@ export default function Home() {
               <div className="flex flex-col gap-2">
                   <div className="mt-1 text-4xl font-bold tracking-tighter text-emerald-400 flex items-center justify-between">
                     <span>
-                      {quote && quote.legs && quote.legs.length > 0 ? (
-                        quote.legs.length === 1 ? 
-                          amount || "0.00" :
-                        quote.legs[1] && quote.legs[1].expectedOutputAmount ? 
-                          (Number(quote.legs[1].expectedOutputAmount || 0) / Math.pow(10, quote.legs[1].toTokenDecimals || 18)).toFixed(4) :
-                          "0.00"
-                      ) : "0.00"}
+                      {quote && quote.legs && quote.legs[0]?.expectedOutputAmount ? 
+                          (Number(quote.legs[0].expectedOutputAmount) / Math.pow(10, quote.legs[0].toTokenDecimals || 18)).toFixed(6) :
+                          "0.00"}
                     </span>
                   </div>
               </div>
@@ -639,13 +635,13 @@ export default function Home() {
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-white/60 font-medium">Estimated Time</span>
                       <span className="text-emerald-400 font-bold flex items-center gap-1">
-                        <Activity size={14} /> ~{quote.estimatedTotalTimeSeconds}s
+                        <Activity size={14} /> ~{Math.ceil((quote.estimatedTotalTimeSeconds || 0) / 60)} min
                       </span>
                     </div>
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-white/60 font-medium">Routing</span>
                         <span className="font-mono text-xs text-white/80 bg-white/10 px-2 py-1 rounded-md">
-                          `Arc → ${destinations[destIndex].name} (${quote?.legs?.[0]?.toTokenSymbol || destinations[destIndex].tokens[destTokenIndex].symbol})`
+                          {`Arc → ${destinations[destIndex].name} (${quote?.legs?.[0]?.toTokenSymbol || destinations[destIndex].tokens[destTokenIndex].symbol})`}
                         </span>
                       </div>
                   </div>

@@ -307,7 +307,14 @@ export default function Home() {
       if (!lifiTxRequest) throw new Error("Invalid quote: no transaction request");
 
       // 1. Check Allowance for LI.FI contract on Arc Mainnet
-      const currentAllowance = await publicClient.readContract({
+      
+      const account = getAccount(config);
+      if (account.chainId !== 5042) {
+         console.log("Switching chain to 5042...");
+         await switchChainAsync({ chainId: 5042 });
+      }
+
+      const currentAllowance = await readContract(config, {
         address: arcUSDC as `0x${string}`,
         abi: erc20Abi,
         functionName: 'allowance',

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useConfig } from 'wagmi';
-import { waitForTransactionReceipt, getAccount } from 'wagmi/actions';
+import { waitForTransactionReceipt, getAccount, readContract } from 'wagmi/actions';
 import { useAccount, useWriteContract, useSendTransaction, useSwitchChain, useReadContract, usePublicClient } from 'wagmi';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { Loader2, CheckCircle2, Zap, ArrowDown, Activity } from 'lucide-react';

@@ -254,6 +254,25 @@ export default function Home() {
     try {
       const dest = destinations[destIndex];
       
+      const isSolanaDest = dest.name.toLowerCase() === 'solana';
+      let targetDestAddress = customDestAddress;
+      
+      if (isSelfSwap) {
+        if (isSolanaDest) {
+          const solWallet = wallets.find(w => w.walletClientType === 'phantom' || w.walletClientType === 'solflare' || (w as any).chainType === 'solana');
+          targetDestAddress = solWallet?.address || '';
+          if (!targetDestAddress) {
+             throw new Error("No Solana wallet connected. Please link a Solana wallet in Privy or use 'Send to another address'.");
+          }
+        } else {
+          targetDestAddress = address || '';
+        }
+      }
+
+      if (!targetDestAddress) {
+        throw new Error("Please enter a destination address");
+      }
+      
       const res = await fetch('/api/quote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

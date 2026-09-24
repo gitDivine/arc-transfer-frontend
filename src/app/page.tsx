@@ -522,19 +522,66 @@ export default function Home() {
               <label className="text-xs font-semibold text-white/40 tracking-wider uppercase flex items-center justify-between mb-2">
                 <span>Receive on</span>
                 <div className="flex gap-2">
-                  <select 
-                    className="bg-[#0A0A0B] text-white border border-white/10 rounded-md px-2 py-1 outline-none text-xs"
-                    value={destIndex}
-                    onChange={(e) => {
-                      const newDestIdx = Number(e.target.value);
-                      setDestIndex(newDestIdx);
-                      setDestTokenIndex(0);
-                    }}
-                  >
-                    {destinations.map((dest, i) => (
-                      <option key={dest.id} value={i}>{dest.name}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsNetworkDropdownOpen(!isNetworkDropdownOpen)}
+                        className="bg-[#0A0A0B] text-white border border-white/10 rounded-md px-2 py-1 outline-none text-xs min-w-[120px] flex justify-between items-center"
+                      >
+                        <div className="flex items-center gap-1.5">
+                           {destinations[destIndex]?.logoURI && <img src={destinations[destIndex].logoURI} alt="chain" className="w-3.5 h-3.5 rounded-full" />}
+                           {destinations[destIndex]?.name}
+                        </div>
+                        <ArrowDown size={12} className="opacity-50" />
+                      </button>
+                      
+                      <AnimatePresence>
+                        {isNetworkDropdownOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -5 }}
+                            className="absolute top-full left-0 mt-1 w-[200px] bg-slate-900 border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden flex flex-col"
+                          >
+                            <div className="p-2 border-b border-white/10">
+                              <input
+                                type="text"
+                                placeholder="Search network..."
+                                value={networkSearch}
+                                onChange={(e) => setNetworkSearch(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-full bg-black/50 border border-white/10 rounded px-2 py-1.5 text-xs text-white outline-none focus:border-emerald-500/50"
+                              />
+                            </div>
+                            <div className="max-h-[200px] overflow-y-auto p-1 custom-scrollbar">
+                              {destinations
+                                .map((d, i) => ({ ...d, originalIndex: i }))
+                                .filter(d => d.name.toLowerCase().includes(networkSearch.toLowerCase()))
+                                .map((dest) => (
+                                  <button
+                                    key={dest.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setDestIndex(dest.originalIndex);
+                                      setDestTokenIndex(0);
+                                      setIsNetworkDropdownOpen(false);
+                                      setNetworkSearch('');
+                                    }}
+                                    className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white/10 flex items-center gap-2"
+                                  >
+                                    {dest.logoURI && <img src={dest.logoURI} alt={dest.name} className="w-4 h-4 rounded-full" />}
+                                    {dest.name}
+                                  </button>
+                                ))
+                              }
+                              {destinations.filter(d => d.name.toLowerCase().includes(networkSearch.toLowerCase())).length === 0 && (
+                                <div className="px-2 py-3 text-xs text-center text-white/50">No networks found</div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   <select 
                     className="bg-[#0A0A0B] text-white border border-white/10 rounded-md px-2 py-1 outline-none text-xs"
                     value={destTokenIndex}
